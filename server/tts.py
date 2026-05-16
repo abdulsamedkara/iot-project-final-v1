@@ -20,7 +20,7 @@ import wave
 log = logging.getLogger("tts")
 
 # Piper model yolu — kendi modelini buraya yaz
-TTS_MODEL_PATH = "./tts_models/tr_TR-dfki-medium.onnx"
+TTS_MODEL_PATH = "./tts_models/en_US-lessac-medium.onnx"
 TTS_SAMPLE_RATE = 22050
 
 # Piper binary yolu (pip ile kurulunca PATH'te olur)

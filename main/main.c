@@ -21,6 +21,8 @@
 #include "crypto.h"
 #include "ws_client.h"
 #include "rfid.h"
+#include "smoke_sensor.h"
+#include "fan_control.h"
 #include "ui/display.h"
 
 static const char *TAG = "main";
@@ -119,6 +121,62 @@ static void ptt_init(void)
 }
 static inline bool ptt_pressed(void) { return gpio_get_level(PTT_GPIO) == 0; }
 
+// ─── Duman/Fan Görevi ─────────────────────────────────────────────────────────
+// Bağımsız FreeRTOS task — Core 0, 500 ms döngü
+// Eşikler: config.h'dan SMOKE_ADC_CLEAR / SMOKE_ADC_HALF
+static void smoke_task(void *arg)
+{
+    static const char *TAG2 = "smoke_task";
+
+    // Isınma bekle
+    ESP_LOGI(TAG2, "Isınma bekleniyor (%d ms)...", SMOKE_WARMUP_MS);
+    while (!smoke_sensor_warmup_done()) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    ESP_LOGI(TAG2, "Isınma tamamlandı. Ölçüm başlıyor.");
+
+    int  alert_count = 0;
+    bool in_alert    = false;
+
+    while (1) {
+        int adc = smoke_sensor_read_avg();
+
+        if (adc < 0) {
+            vTaskDelay(pdMS_TO_TICKS(500));
+            continue;
+        }
+
+        // Fan hız kontrolü
+        if (adc < SMOKE_ADC_CLEAR) {
+            fan_off();
+        } else if (adc < SMOKE_ADC_HALF) {
+            fan_half();
+        } else {
+            fan_full();
+        }
+
+        // Alarm debounce: 3 ardışık yüksek okuma = alarm
+        if (adc >= SMOKE_ADC_HALF) {
+            if (++alert_count >= 3 && !in_alert) {
+                in_alert = true;
+                ESP_LOGW(TAG2, "DUMAN ALARMI! ADC=%d", adc);
+                char msg[32];
+                snprintf(msg, sizeof(msg), "ADC: %d", adc);
+                display_switch(SCREEN_SMOKE_ALERT, msg);
+            }
+        } else {
+            if (alert_count > 0) alert_count--;
+            if (in_alert && adc < SMOKE_ADC_CLEAR) {
+                in_alert = false;
+                ESP_LOGI(TAG2, "Duman azaldı. ADC=%d", adc);
+                display_switch(SCREEN_READY, NULL);
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 // ─── WebSocket callback'leri ──────────────────────────────────────────────────
 static volatile bool    s_rsp_ready = false;
 static const uint8_t   *s_rsp_pcm   = NULL;
@@ -186,6 +244,11 @@ void app_main(void)
 
     // 7. RFID
     ESP_ERROR_CHECK(rfid_init());
+
+    // 7b. Duman sensörü + fan
+    ESP_ERROR_CHECK(smoke_sensor_init());
+    ESP_ERROR_CHECK(fan_control_init());
+    xTaskCreatePinnedToCore(smoke_task, "smoke", 3072, NULL, 3, NULL, 0);
 
     // 8. WebSocket → session key al
     display_switch(SCREEN_IDLE, "Sunucuya baglaniliyor...");

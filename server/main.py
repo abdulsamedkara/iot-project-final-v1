@@ -1,9 +1,8 @@
 """
-main.py — SmartLab FastAPI WebSocket Sunucusu
-Faza 1: WebSocket + AES-256 + STT + TTS
+main.py — SmartLab FastAPI WebSocket Sunucusu (Faza 1-4)
 
 Başlatma:
-  uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+  uvicorn main:app --host 0.0.0.0 --port 8080
 
 WebSocket Protokolü:
   BAĞLANTI → Sunucu: {"type":"session","session_id":"...","key_b64":"..."}
@@ -12,19 +11,36 @@ WebSocket Protokolü:
   Sunucu→ESP32 (text):   {"type":"user","name":"..."}
   Sunucu→ESP32 (text):   {"type":"transcript","text":"..."}
   Sunucu→ESP32 (binary): [IV 16B][AES-CBC(PCM yanıt)]
+
+REST:
+  POST /upload/{session_id}              — fotoğraf yükle (multipart, field: file)
+  POST /api/session/{session_id}/photo   — fotoğraf yükle (multipart, field: photo)
+  GET  /api/rfid/pending                 — web UI RFID poll (consume one event)
+  WS   /ws/rfid                          — web UI RFID push stream
+  POST /smoke_alert                      — ESP32 duman uyarısı
+  GET  /sessions                         — aktif session listesi
+  GET  /health                           — durum kontrolü
 """
 
+import asyncio
+import base64
 import json
 import logging
-import asyncio
 import time
+import threading
+from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, UploadFile, File
+from fastapi.responses import Response, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 import crypto
 import stt
 import tts
+import llm
+import rag
 from session import store
 
 logging.basicConfig(
@@ -33,54 +49,71 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartlab")
 
-app = FastAPI(title="SmartLab Asistan API")
+# ─── RFID event broadcast ─────────────────────────────────────────────────────
+# Pending events for GET /api/rfid/pending (polling fallback)
+_rfid_events: list[dict] = []
+_rfid_events_lock = threading.Lock()
 
-# ─── Basit LLM (Faza 1 — Faza 2'de Ollama ile değiştirilir) ─────────────────
-def simple_llm(transcript: str, username: str) -> str:
-    """
-    Faza 1'de gerçek LLM yerine basit kural tabanlı yanıt.
-    Faza 2'de bu fonksiyon Ollama VLM stream ile değiştirilecek.
-    """
-    greet = f"Merhaba {username}! " if username and username != "Misafir" else ""
-
-    if not transcript.strip():
-        return greet + "Sizi duyamadım, lütfen tekrar söyler misiniz?"
-
-    low = transcript.lower()
-    if any(w in low for w in ["merhaba", "selam", "hey"]):
-        return greet + "Merhaba! SmartLab asistanınım. Nasıl yardımcı olabilirim?"
-    elif any(w in low for w in ["nasıl", "nasil", "ne yapabilirim"]):
-        return (greet + "Atölye cihazları hakkında sorularınızı yanıtlayabilirim. "
-                "Cihazın fotoğrafını çekip sorunuzu sesli sorabilirsiniz.")
-    elif any(w in low for w in ["test", "deneme", "çalışıyor", "calisıyor"]):
-        return greet + "Evet, sistem çalışıyor. Ses iletişimi başarılı!"
-    else:
-        return (greet + f"'{transcript}' sorunuzu aldım. "
-                "Faza 2'de AI motoru ile yanıt vereceğim.")
+# Connected /ws/rfid WebSocket queues (push stream)
+_rfid_ws_queues: list[asyncio.Queue] = []
+_rfid_ws_queues_lock = asyncio.Lock()
 
 
-# ─── WebSocket endpoint ───────────────────────────────────────────────────────
+async def _broadcast_rfid(event: dict):
+    """Push RFID event to polling list and all connected /ws/rfid clients."""
+    with _rfid_events_lock:
+        _rfid_events.append(event)
+        if len(_rfid_events) > 20:   # prevent unbounded growth
+            _rfid_events.pop(0)
+
+    async with _rfid_ws_queues_lock:
+        for q in list(_rfid_ws_queues):
+            try:
+                q.put_nowait(event)
+            except asyncio.QueueFull:
+                pass
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    log.info("RAG: PDF indeksleme başlıyor...")
+    try:
+        added = await asyncio.get_event_loop().run_in_executor(None, rag.index_pdfs)
+        log.info(f"RAG: {added} chunk indekslendi.")
+    except Exception as e:
+        log.warning(f"RAG indeksleme atlandı: {e}")
+    yield
+    log.info("Sunucu kapatılıyor.")
+
+
+app = FastAPI(title="SmartLab Asistan API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ─── Main ESP32 WebSocket ────────────────────────────────────────────────────
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await ws.accept()
 
-    # Yeni session oluştur
     sess = store.create()
     log.info(f"[{sess.session_id[:8]}] Bağlantı kabul edildi")
 
-    # Hemen session bilgisini gönder
     await ws.send_text(json.dumps({
         "type":       "session",
         "session_id": sess.session_id,
         "key_b64":    sess.key_b64,
     }))
-    log.info(f"[{sess.session_id[:8]}] Session gönderildi")
 
     try:
         while True:
             message = await ws.receive()
 
-            # ── Text frame (JSON kontrol mesajı) ──────────────────────────────
             if "text" in message:
                 try:
                     data = json.loads(message["text"])
@@ -90,74 +123,83 @@ async def ws_endpoint(ws: WebSocket):
                         uid = data.get("uid", "").upper()
                         username = store.set_user(sess.session_id, uid)
                         log.info(f"[{sess.session_id[:8]}] RFID: {uid} → {username}")
+
                         await ws.send_text(json.dumps({
                             "type": "user",
                             "name": username,
                         }))
 
+                        # Notify web UI clients
+                        await _broadcast_rfid({
+                            "event":      "card_detected",
+                            "session_id": sess.session_id,
+                            "user_name":  username,
+                            "uid":        uid,
+                        })
+
                 except json.JSONDecodeError:
                     log.warning(f"[{sess.session_id[:8]}] JSON parse hatası")
 
-            # ── Binary frame (ses verisi) ──────────────────────────────────────
             elif "bytes" in message:
                 raw = message["bytes"]
 
-                # Beklenen format: [0x01][IV 16B][AES-CBC(PCM)]
                 if len(raw) < 18 or raw[0] != 0x01:
                     log.warning(f"[{sess.session_id[:8]}] Geçersiz binary frame")
                     continue
 
-                encrypted_payload = raw[1:]  # Tip byte'ını çıkar
                 t0 = time.time()
 
-                # Deşifre
                 try:
-                    pcm_bytes = crypto.decrypt(sess.key_bytes, encrypted_payload)
+                    pcm_bytes = crypto.decrypt(sess.key_bytes, raw[1:])
                 except Exception as e:
                     log.error(f"[{sess.session_id[:8]}] Deşifre hatası: {e}")
                     continue
 
-                log.info(f"[{sess.session_id[:8]}] PCM alındı: {len(pcm_bytes)} byte "
-                         f"({len(pcm_bytes)/16000/2:.2f}s) — deşifre: {time.time()-t0:.3f}s")
+                log.info(f"[{sess.session_id[:8]}] PCM: {len(pcm_bytes)//2/16000:.2f}s")
 
-                # STT
                 t1 = time.time()
                 transcript = await asyncio.get_event_loop().run_in_executor(
                     None, stt.transcribe, pcm_bytes
                 )
                 log.info(f"[{sess.session_id[:8]}] STT ({time.time()-t1:.2f}s): '{transcript}'")
 
-                # Transcript'i ESP32'ye gönder (ekranda gösterim için)
                 await ws.send_text(json.dumps({
                     "type": "transcript",
                     "text": transcript,
                 }))
 
-                # LLM (Faza 1: basit kural tabanlı)
-                t2 = time.time()
-                current_sess = store.get(sess.session_id)
-                username = current_sess.username if current_sess else "Misafir"
-                answer = simple_llm(transcript, username)
-                log.info(f"[{sess.session_id[:8]}] LLM ({time.time()-t2:.2f}s): '{answer}'")
+                rag_ctx = await asyncio.get_event_loop().run_in_executor(
+                    None, rag.query, transcript
+                )
 
-                # TTS
+                current_sess = store.get(sess.session_id)
+                username  = current_sess.username  if current_sess else "Misafir"
+                image_b64 = current_sess.image_b64 if current_sess else None
+
+                t2 = time.time()
+                answer = await llm.generate(
+                    transcript=transcript,
+                    username=username,
+                    image_b64=image_b64,
+                    rag_context=rag_ctx,
+                )
+                log.info(f"[{sess.session_id[:8]}] LLM ({time.time()-t2:.2f}s): '{answer[:60]}'")
+
                 t3 = time.time()
                 audio_pcm = await asyncio.get_event_loop().run_in_executor(
                     None, tts.synthesize, answer
                 )
                 log.info(f"[{sess.session_id[:8]}] TTS ({time.time()-t3:.2f}s): "
-                         f"{len(audio_pcm)} byte PCM")
+                         f"{len(audio_pcm)} byte")
 
                 if not audio_pcm:
                     log.error(f"[{sess.session_id[:8]}] TTS boş çıktı")
                     continue
 
-                # Şifrele ve gönder: IV(16) | AES-CBC(PCM)
                 encrypted_audio = crypto.encrypt(sess.key_bytes, audio_pcm)
                 await ws.send_bytes(encrypted_audio)
 
-                total_ms = (time.time() - t0) * 1000
-                log.info(f"[{sess.session_id[:8]}] ✓ Toplam: {total_ms:.0f}ms")
+                log.info(f"[{sess.session_id[:8]}] ✓ Toplam: {(time.time()-t0)*1000:.0f}ms")
 
     except WebSocketDisconnect:
         log.info(f"[{sess.session_id[:8]}] Bağlantı kesildi")
@@ -165,33 +207,126 @@ async def ws_endpoint(ws: WebSocket):
         log.error(f"[{sess.session_id[:8]}] Beklenmeyen hata: {e}", exc_info=True)
     finally:
         store.remove(sess.session_id)
-        log.info(f"[{sess.session_id[:8]}] Session temizlendi")
 
 
-# ─── Duman Sensörü Uyarı Endpoint'i (Faza 3'e hazır) ─────────────────────────
+# ─── Web UI: RFID push stream ─────────────────────────────────────────────────
+@app.websocket("/ws/rfid")
+async def ws_rfid(ws: WebSocket):
+    """Pushes RFID card_detected events to connected web UI clients."""
+    await ws.accept()
+    q: asyncio.Queue = asyncio.Queue(maxsize=10)
+
+    async with _rfid_ws_queues_lock:
+        _rfid_ws_queues.append(q)
+
+    log.info("WS /ws/rfid: web UI bağlandı")
+    try:
+        while True:
+            try:
+                event = await asyncio.wait_for(q.get(), timeout=25.0)
+                await ws.send_text(json.dumps(event))
+            except asyncio.TimeoutError:
+                # Keep-alive ping
+                await ws.send_text(json.dumps({"event": "ping"}))
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        log.debug(f"WS /ws/rfid kapatıldı: {e}")
+    finally:
+        async with _rfid_ws_queues_lock:
+            try:
+                _rfid_ws_queues.remove(q)
+            except ValueError:
+                pass
+        log.info("WS /ws/rfid: web UI ayrıldı")
+
+
+# ─── Web UI: RFID polling fallback ───────────────────────────────────────────
+@app.get("/api/rfid/pending")
+async def rfid_pending():
+    """
+    Returns and removes the oldest pending RFID card_detected event.
+    Returns 204 when no events are queued.
+    """
+    with _rfid_events_lock:
+        if _rfid_events:
+            return JSONResponse(_rfid_events.pop(0))
+    return Response(status_code=204)
+
+
+# ─── Demo session (web UI demo button) ───────────────────────────────────────
+@app.post("/api/demo/session")
+async def demo_session():
+    """Creates a real session with a demo user — used by the web UI demo button."""
+    sess = store.create()
+    with store._lock:
+        sess.username = "Demo Kullanıcı"
+    event = {
+        "event":      "card_detected",
+        "session_id": sess.session_id,
+        "user_name":  sess.username,
+        "uid":        "DEMO0000",
+    }
+    await _broadcast_rfid(event)
+    log.info(f"[{sess.session_id[:8]}] Demo session oluşturuldu")
+    return {"session_id": sess.session_id, "user_name": sess.username}
+
+
+# ─── Photo upload (original route, field: file) ───────────────────────────────
+@app.post("/upload/{session_id}")
+async def upload_image(session_id: str, file: UploadFile = File(...)):
+    return await _handle_upload(session_id, file)
+
+
+# ─── Photo upload alias (design route, field: photo) ─────────────────────────
+@app.post("/api/session/{session_id}/photo")
+async def upload_photo_alias(session_id: str, photo: UploadFile = File(...)):
+    return await _handle_upload(session_id, photo)
+
+
+async def _handle_upload(session_id: str, upload: UploadFile) -> JSONResponse | Response:
+    sess = store.get(session_id)
+    if not sess:
+        return JSONResponse({"error": "Session bulunamadı"}, status_code=404)
+
+    content = await upload.read()
+    if len(content) > 5 * 1024 * 1024:
+        return JSONResponse({"error": "Dosya çok büyük (max 5MB)"}, status_code=413)
+
+    image_b64 = base64.b64encode(content).decode()
+    ok = store.set_image(session_id, image_b64)
+    if not ok:
+        return JSONResponse({"error": "Session güncellenemedi"}, status_code=500)
+
+    log.info(f"[{session_id[:8]}] Fotoğraf alındı: {len(content)//1024}KB "
+             f"({upload.content_type})")
+    return JSONResponse({"status": "ok", "size_kb": len(content) // 1024})
+
+
+# ─── Smoke alert ─────────────────────────────────────────────────────────────
 @app.post("/smoke_alert")
 async def smoke_alert(req: Request):
-    """
-    ESP32'den gelen duman uyarısı.
-    MQ135 ADC değerine göre Türkçe sesli uyarı üretir.
-    """
     body = await req.json()
-    adc_val = body.get("adc_value", 0)
+    adc_val    = body.get("adc_value", 0)
     session_id = body.get("session_id", "")
 
     current_sess = store.get(session_id)
     username = current_sess.username if current_sess else ""
 
     if adc_val >= 2000:
-        text = (f"Dikkat{', ' + username if username else ''}! "
-                "Laboratuvarda yoğun duman tespit edildi. "
-                "Lütfen çalışma alanını derhal terk edin ve pencereyi açın.")
+        text = (
+            f"Warning{', ' + username if username else ''}! "
+            "High smoke concentration detected in the lab. "
+            "Please evacuate immediately and open the windows."
+        )
     else:
-        text = (f"Uyarı{', ' + username if username else ''}. "
-                "Hafif gaz veya duman algılandı. "
-                "Havalandırma sistemi devreye girdi.")
+        text = (
+            f"Caution{', ' + username if username else ''}. "
+            "Mild gas or smoke detected. "
+            "Ventilation system has been activated."
+        )
 
-    log.warning(f"[DUMAN] ADC={adc_val} → '{text}'")
+    log.warning(f"[SMOKE] ADC={adc_val} → '{text}'")
 
     audio_pcm = await asyncio.get_event_loop().run_in_executor(
         None, tts.synthesize, text
@@ -200,16 +335,40 @@ async def smoke_alert(req: Request):
     if not audio_pcm:
         return Response(status_code=204)
 
-    # Şifrelenmiş yanıt (session anahtarıyla)
     if current_sess:
         encrypted = crypto.encrypt(current_sess.key_bytes, audio_pcm)
         return Response(content=encrypted, media_type="application/octet-stream")
-    else:
-        # Session yoksa ham PCM döndür (uyarı yine de çıksın)
-        return Response(content=audio_pcm, media_type="application/octet-stream")
+    return Response(content=audio_pcm, media_type="application/octet-stream")
+
+
+# ─── Sessions list ────────────────────────────────────────────────────────────
+@app.get("/sessions")
+async def list_sessions():
+    with store._lock:
+        sessions = [
+            {
+                "session_id": sid,
+                "username":   s.username,
+                "has_image":  s.image_b64 is not None,
+                "age_sec":    int(time.time() - s.created_at),
+            }
+            for sid, s in store._sessions.items()
+        ]
+    return {"sessions": sessions}
 
 
 # ─── Health check ─────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health():
-    return {"status": "ok", "sessions": len(store._sessions)}
+    return {
+        "status":   "ok",
+        "sessions": len(store._sessions),
+        "rag_docs": rag._collection.count() if rag._collection else 0,
+    }
+
+
+# ─── Serve web UI (must be last — catches everything else) ────────────────────
+_WEB_UI_DIR = Path(__file__).parent.parent / "web_ui"
+
+if _WEB_UI_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(_WEB_UI_DIR), html=True), name="web_ui")

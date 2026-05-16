@@ -30,6 +30,7 @@ class Session:
     created_at: float = field(default_factory=time.time)
     username: str = "Misafir"
     rfid_uid: Optional[str] = None
+    image_b64: Optional[str] = None   # Faza 4: mobil web UI'dan yüklenen fotoğraf
 
     @property
     def key_b64(self) -> str:
@@ -65,6 +66,15 @@ class SessionStore:
                 sess.rfid_uid = rfid_uid
                 sess.username = username
         return username
+
+    def set_image(self, session_id: str, image_b64: str) -> bool:
+        """Fotoğrafı session'a ekler. Başarılıysa True döner."""
+        with self._lock:
+            sess = self._sessions.get(session_id)
+            if sess:
+                sess.image_b64 = image_b64
+                return True
+            return False
 
     def remove(self, session_id: str):
         with self._lock:

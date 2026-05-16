@@ -1,6 +1,28 @@
+# SmartLab Asistan — Sunucu Gereksinimleri
+# Kurulum: pip install -r requirements.txt
+
+# Web sunucu
 fastapi>=0.111.0
 uvicorn[standard]>=0.30.0
 websockets>=12.0
-faster-whisper>=1.0.0
-piper-tts>=1.2.0
+python-multipart>=0.0.9    # /upload endpoint için
+
+# Şifreleme
 cryptography>=42.0.0
+
+# STT
+faster-whisper>=1.0.0
+
+# TTS (Piper binary ayrıca kurulacak — pip install piper-tts)
+piper-tts>=1.2.0
+
+# LLM (Ollama Python istemcisi)
+httpx>=0.27.0
+
+# RAG
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+pypdf>=4.0.0
+
+# Faza 4: görüntü işleme (opsiyonel)
+Pillow>=10.0.0

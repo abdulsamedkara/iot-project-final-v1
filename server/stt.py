@@ -39,7 +39,7 @@ def pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 16000) -> bytes:
 
 
 def transcribe(pcm_bytes: bytes, sample_rate: int = 16000,
-               language: str = "tr") -> str:
+               language: str = "en") -> str:
     """
     PCM'yi metne çevirir.
     language="tr" → Türkçe zorla. None → dil tespiti.

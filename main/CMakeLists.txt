@@ -6,6 +6,8 @@ idf_component_register(
         "crypto.c"
         "ws_client.c"
         "rfid.c"
+        "smoke_sensor.c"
+        "fan_control.c"
         "ui/display.c"
         "ui/ui_smartlab.c"
     INCLUDE_DIRS "." "ui"
