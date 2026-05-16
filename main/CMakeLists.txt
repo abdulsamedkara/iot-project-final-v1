@@ -1,0 +1,23 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "i2s_mic.c"
+        "i2s_player.c"
+        "crypto.c"
+        "ws_client.c"
+        "rfid.c"
+        "ui/display.c"
+        "ui/ui_smartlab.c"
+    INCLUDE_DIRS "." "ui"
+    REQUIRES
+        esp_wifi
+        nvs_flash
+        esp_event
+        esp_timer
+        driver
+        esp_adc
+        esp_websocket_client
+        mbedtls
+        lvgl
+        esp_lcd_ili9341
+)

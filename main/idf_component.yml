@@ -1,0 +1,7 @@
+dependencies:
+  idf: ">=5.1"
+  # Display
+  lvgl/lvgl: "~8.3.11"
+  espressif/esp_lcd_ili9341: "^1.0"
+  # WebSocket client
+  espressif/esp_websocket_client: "^1.0"
