@@ -13,8 +13,14 @@ log = logging.getLogger("stt")
 
 _model = None
 _MODEL_NAME = "base"   # "tiny" daha hızlı, "small" daha doğru
-_DEVICE      = "cuda"  # GPU yoksa "cpu" yap
-_COMPUTE_TYPE = "float16"  # GPU: float16 | CPU: int8
+
+try:
+    import torch
+    _DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+except ImportError:
+    _DEVICE = "cpu"
+
+_COMPUTE_TYPE = "float16" if _DEVICE == "cuda" else "int8"
 
 
 def _get_model():

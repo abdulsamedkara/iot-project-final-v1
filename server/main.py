@@ -108,7 +108,7 @@ async def ws_endpoint(ws: WebSocket):
         "type":       "session",
         "session_id": sess.session_id,
         "key_b64":    sess.key_b64,
-    }))
+    }, separators=(',', ':')))
 
     try:
         while True:
@@ -127,7 +127,7 @@ async def ws_endpoint(ws: WebSocket):
                         await ws.send_text(json.dumps({
                             "type": "user",
                             "name": username,
-                        }))
+                        }, separators=(',', ':')))
 
                         # Notify web UI clients
                         await _broadcast_rfid({
@@ -166,7 +166,7 @@ async def ws_endpoint(ws: WebSocket):
                 await ws.send_text(json.dumps({
                     "type": "transcript",
                     "text": transcript,
-                }))
+                }, separators=(',', ':')))
 
                 rag_ctx = await asyncio.get_event_loop().run_in_executor(
                     None, rag.query, transcript

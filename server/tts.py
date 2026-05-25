@@ -11,20 +11,18 @@ Kullanım:
   audio_bytes = synthesize("Merhaba, nasılsınız?")
 """
 
-import io
+import os
 import subprocess
 import logging
-import struct
+import io
 import wave
 
 log = logging.getLogger("tts")
 
-# Piper model yolu — kendi modelini buraya yaz
-TTS_MODEL_PATH = "./tts_models/en_US-lessac-medium.onnx"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+TTS_MODEL_PATH = os.path.join(_HERE, "tts_models", "en_US-lessac-medium.onnx")
 TTS_SAMPLE_RATE = 22050
-
-# Piper binary yolu (pip ile kurulunca PATH'te olur)
-PIPER_BIN = "piper"
+PIPER_BIN = os.path.join(_HERE, "piper.exe")
 
 
 def synthesize(text: str) -> bytes:
@@ -37,18 +35,16 @@ def synthesize(text: str) -> bytes:
 
     try:
         result = subprocess.run(
-            [
-                PIPER_BIN,
-                "--model",  TTS_MODEL_PATH,
-                "--output_raw",          # Ham PCM çıktısı
-            ],
+            [PIPER_BIN, "--model", TTS_MODEL_PATH, "--output_raw"],
             input=text.encode("utf-8"),
             capture_output=True,
             timeout=30,
+            cwd=_HERE,
         )
 
         if result.returncode != 0:
-            log.error(f"Piper hatası: {result.stderr.decode()}")
+            log.error(f"Piper returncode={result.returncode}")
+            log.error(f"Piper stderr: {result.stderr.decode(errors='replace')}")
             return b""
 
         pcm = result.stdout
@@ -59,8 +55,10 @@ def synthesize(text: str) -> bytes:
         log.error("Piper zaman aşımı")
         return b""
     except FileNotFoundError:
-        log.error(f"Piper bulunamadı: '{PIPER_BIN}'. "
-                  "Kurulum: pip install piper-tts")
+        log.error(f"piper.exe bulunamadı: '{PIPER_BIN}'")
+        return b""
+    except Exception as e:
+        log.error(f"TTS hatası: {e}")
         return b""
 
 

@@ -125,10 +125,10 @@ esp_err_t rfid_init(void)
     mfrc_antenna_on();
 
     uint8_t ver = mfrc_read(REG_VERSION);
-    ESP_LOGI(TAG, "MFRC522 hazır — Versiyon: 0x%02X (beklenen: 0x91 veya 0x92)", ver);
-
-    if (ver != 0x91 && ver != 0x92) {
-        ESP_LOGW(TAG, "MFRC522 bulunamadı veya bağlantı sorunu!");
+    if (ver == 0x91 || ver == 0x92 || ver == 0x18 || ver == 0x88) {
+        ESP_LOGI(TAG, "MFRC522 hazir — Versiyon: 0x%02X", ver);
+    } else {
+        ESP_LOGW(TAG, "MFRC522 beklenmeyen versiyon: 0x%02X — baglanti kontrol edin", ver);
     }
     return ESP_OK;
 }
@@ -154,20 +154,18 @@ static mfrc_resp_t mfrc_transceive(const uint8_t *tx_data, uint8_t tx_len,
         mfrc_write(REG_FIFO_DATA, tx_data[i]);
     }
 
-    mfrc_write(REG_BIT_FRAMING, last_bits ? (0x80 | last_bits) : 0x00);
+    mfrc_write(REG_BIT_FRAMING, last_bits);  // sadece bit sayısı, StartSend yok
     mfrc_write(REG_COMMAND, CMD_TRANSCEIVE);
-    if (last_bits) {
-        mfrc_set_bits(REG_BIT_FRAMING, 0x80);  // StartSend
-    }
+    mfrc_set_bits(REG_BIT_FRAMING, 0x80);    // StartSend — her zaman set et
 
-    // IRQ bekle (max 25ms)
-    uint16_t timeout = 2000;
+    // IRQ bekle (max 50ms — donanım timer ~25ms, HLTA yanıt vermez bu yüzden kısa tut)
+    uint16_t timeout = 50;
     uint8_t irq;
     do {
         irq = mfrc_read(REG_COM_IRQ);
         timeout--;
         vTaskDelay(pdMS_TO_TICKS(1));
-    } while (!(irq & 0x30) && timeout);  // RxIRq veya IdleIRq
+    } while (!(irq & 0x31) && timeout);  // RxIRq | IdleIRq | TimerIRq
 
     mfrc_clear_bits(REG_BIT_FRAMING, 0x80);
 

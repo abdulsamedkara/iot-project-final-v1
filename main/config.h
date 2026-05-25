@@ -1,12 +1,12 @@
 #pragma once
 
 // ─── WiFi ─────────────────────────────────────────────────────────────────────
-#define WIFI_SSID           "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD       "YOUR_WIFI_PASSWORD"
+#define WIFI_SSID           "Raspi"
+#define WIFI_PASSWORD       "00000000"
 #define WIFI_MAX_RETRY      10
 
 // ─── AI Sunucu ────────────────────────────────────────────────────────────────
-#define SERVER_HOST         "YOUR_SERVER_IP"   // PC'nin yerel IP adresi
+#define SERVER_HOST         "10.162.138.241"   // PC'nin yerel IP adresi
 #define SERVER_PORT         8080
 #define SERVER_WS_URI       "ws://" SERVER_HOST ":8080/ws"
 
@@ -32,25 +32,25 @@
 
 // ─── INMP441 I2S Mikrofon ────────────────────────────────────────────────────
 #define MIC_I2S_PORT        I2S_NUM_0
-#define MIC_SCK_GPIO        5
-#define MIC_WS_GPIO         4
-#define MIC_SD_GPIO         6
+#define MIC_SCK_GPIO        42
+#define MIC_WS_GPIO         2
+#define MIC_SD_GPIO         41
 #define MIC_SAMPLE_RATE     16000   // 16 kHz — Whisper için ideal
 
 // ─── MAX98357A I2S Amfi/Hoparlör ─────────────────────────────────────────────
 #define SPK_I2S_PORT        I2S_NUM_1
 #define SPK_BCK_GPIO        16
-#define SPK_WS_GPIO         15
-#define SPK_DIN_GPIO        17
+#define SPK_WS_GPIO         17
+#define SPK_DIN_GPIO        15
 #define SPK_SAMPLE_RATE     22050   // Piper TTS çıkış hızı
 
 // ─── Push-to-Talk Butonu ──────────────────────────────────────────────────────
 #define PTT_GPIO            0       // INPUT_PULLUP, LOW = basılı
 
 // ─── MQ135 Gaz/Duman Sensörü ─────────────────────────────────────────────────
-#define SMOKE_AOUT_GPIO     3       // ADC1_CH2 — analog yoğunluk
+#define SMOKE_AOUT_GPIO     4       // ADC1_CH3 — analog yoğunluk (GPIO3 strapping pin, kullanma)
 #define SMOKE_DOUT_GPIO     14      // Dijital eşik çıkışı (isteğe bağlı)
-#define SMOKE_ADC_CHANNEL   ADC_CHANNEL_2   // GPIO3 = ADC1_CH2
+#define SMOKE_ADC_CHANNEL   ADC_CHANNEL_3   // GPIO4 = ADC1_CH3
 #define SMOKE_ADC_CLEAR     800     // Bu değerin altı temiz hava
 #define SMOKE_ADC_HALF      1500    // Fan %50
 #define SMOKE_ADC_FULL      2000    // Fan %100 + uyarı

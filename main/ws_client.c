@@ -256,7 +256,7 @@ esp_err_t ws_client_send_audio(const uint8_t *iv,
 
     // Frame: [0x01][IV 16B][cipher]
     size_t total = 1 + CRYPTO_IV_LEN + cipher_len;
-    uint8_t *frame = heap_caps_malloc(total, MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA);
+    uint8_t *frame = heap_caps_malloc(total, MALLOC_CAP_SPIRAM);
     if (!frame) return ESP_ERR_NO_MEM;
 
     frame[0] = WS_FRAME_TYPE_AUDIO;

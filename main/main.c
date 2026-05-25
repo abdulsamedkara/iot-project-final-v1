@@ -58,8 +58,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t base,
 static esp_err_t wifi_init(void)
 {
     s_wifi_eg = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -146,6 +144,8 @@ static void smoke_task(void *arg)
             continue;
         }
 
+        ESP_LOGI(TAG2, "ADC=%d", adc);
+
         // Fan hız kontrolü
         if (adc < SMOKE_ADC_CLEAR) {
             fan_off();
@@ -219,6 +219,10 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+
+    // TCP/IP stack ve event loop — WiFi'den önce, LVGL'den önce
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // 2. SPI Bus (TFT ve RFID bunu paylaşır)
     spi_bus_init();

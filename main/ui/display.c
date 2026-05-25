@@ -120,13 +120,15 @@ esp_err_t display_init(void)
     ESP_ERROR_CHECK(esp_timer_create(&tick_args, &tick_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, LVGL_TICK_MS * 1000));
 
-    // Mutex + LVGL task (Core 1 — WiFi/WS Core 0'da çalışır)
+    // Mutex oluştur
     s_mux = xSemaphoreCreateMutex();
-    xTaskCreatePinnedToCore(lvgl_task, "lvgl", 4096, NULL, 4, NULL, 1);
 
-    // İlk ekranı çiz
+    // UI nesnelerini önce oluştur, sonra task'ı başlat
     ui_smartlab_init();
     display_switch(SCREEN_IDLE, NULL);
+
+    // LVGL task (Core 1 — WiFi/WS Core 0'da çalışır)
+    xTaskCreatePinnedToCore(lvgl_task, "lvgl", 8192, NULL, 4, NULL, 1);
 
     ESP_LOGI(TAG, "Ekran hazir: %dx%d", TFT_WIDTH, TFT_HEIGHT);
     return ESP_OK;

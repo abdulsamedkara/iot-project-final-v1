@@ -19,6 +19,7 @@ from typing import Optional
 RFID_USERS: dict[str, str] = {
     "A1B2C3D4": "Abdulsamet Kara",
     "11223344": "Test Kullanicisi",
+    "635113FD": "Mert Abdullahoğlu",
     # Yeni kartlar eklemek için: "HEXUID": "Ad Soyad"
 }
 

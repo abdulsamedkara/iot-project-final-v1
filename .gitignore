@@ -24,6 +24,26 @@ build/
 *.out
 *.exe # For any host-side utilities compiled on Windows
 
+# Piper TTS binary ve bağımlılıkları — manuel kopyalanacak
+server/piper.exe
+server/piper_phonemize.dll
+server/onnxruntime.dll
+server/onnxruntime_providers_shared.dll
+server/espeak-ng.dll
+server/espeak-ng-data/
+
+# TTS model dosyaları (büyük binary) — .onnx.json config kalır
+server/tts_models/*.onnx
+
+# ChromaDB runtime veritabanı
+server/chroma_db/
+
+# Claude Code local ayarları
+.claude/
+
+# IDE ayarları — makineye özel
+.vscode/
+
 # ESP-IDF specific build outputs
 *.bin
 *.elf
