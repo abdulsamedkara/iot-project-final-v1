@@ -23,6 +23,7 @@
 #include "rfid.h"
 #include "smoke_sensor.h"
 #include "fan_control.h"
+#include "dht11.h"
 #include "ui/display.h"
 
 static const char *TAG = "main";
@@ -177,6 +178,145 @@ static void smoke_task(void *arg)
     }
 }
 
+// ─── DHT11 Görevi ─────────────────────────────────────────────────────────────
+static void dht11_task(void *arg)
+{
+    static const char *TAG3 = "dht11_task";
+    dht11_reading_t dht_data;
+
+    ESP_LOGI(TAG3, "DHT11 okuma basliyor...");
+
+    while (1) {
+        esp_err_t res = dht11_read(DHT11_GPIO, &dht_data);
+        if (res == ESP_OK) {
+            ESP_LOGI(TAG3, "Sicaklik: %dC, Nem: %%%d", dht_data.temperature, dht_data.humidity);
+        } else {
+            ESP_LOGW(TAG3, "DHT11 okuma basarisiz (hata: %d)", res);
+        }
+        vTaskDelay(pdMS_TO_TICKS(DHT11_UPDATE_MS));
+    }
+}
+
+// ─── LDR Görevi (Analog) ──────────────────────────────────────────────────────
+static void ldr_task(void *arg)
+{
+    static const char *TAG_LDR = "ldr_task";
+    
+    ESP_LOGI(TAG_LDR, "LDR okuma basliyor (Analog GPIO %d)...", LDR_AOUT_GPIO);
+
+    while (1) {
+        int ldr_adc = ldr_sensor_read_avg();
+        if (ldr_adc >= 0) {
+            ESP_LOGI(TAG_LDR, "LDR ADC = %d (Işık şiddeti)", ldr_adc);
+        } else {
+            ESP_LOGW(TAG_LDR, "LDR okuma hatası!");
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Saniyede bir kontrol et
+    }
+}
+
+// ─── PIR Görevi (Hareket Sensörü) ─────────────────────────────────────────────
+static void pir_task(void *arg)
+{
+    static const char *TAG_PIR = "pir_task";
+    
+    // PIR sensörünün veri pini giriş olarak ayarlanır
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << PIR_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE, // Çoğu PIR modülü (HC-SR501 vb.) kendi direncine sahiptir
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&io_conf);
+
+    int last_state = -1;
+    ESP_LOGI(TAG_PIR, "PIR hareket sensoru dinleniyor (GPIO %d)...", PIR_GPIO);
+
+    while (1) {
+        int current_state = gpio_get_level(PIR_GPIO);
+        
+        // Durum değişimi varsa logla
+        if (current_state != last_state) {
+            if (current_state == 1) {
+                ESP_LOGI(TAG_PIR, "ALARM: Hareket algilandi!");
+            } else {
+                ESP_LOGI(TAG_PIR, "Hareket bitti, ortam sakin.");
+            }
+            last_state = current_state;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(500)); // 500 ms'de bir kontrol et
+    }
+}
+
+// ─── Alev Sensörü Görevi ──────────────────────────────────────────────────────
+static void flame_task(void *arg)
+{
+    static const char *TAG_FLAME = "flame_task";
+    
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << FLAME_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE, // Sensör DO sinyalini stabil tutmak için
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&io_conf);
+
+    int last_state = -1;
+    ESP_LOGI(TAG_FLAME, "Alev sensoru dinleniyor (GPIO %d)...", FLAME_GPIO);
+
+    while (1) {
+        int current_state = gpio_get_level(FLAME_GPIO);
+        
+        if (current_state != last_state) {
+            // Çoğu alev modülü alev algıladığında 0 (LOW), normalde 1 (HIGH) verir.
+            if (current_state == 0) {
+                ESP_LOGE(TAG_FLAME, "YANGIN ALARMI: Alev algilandi!");
+            } else {
+                ESP_LOGI(TAG_FLAME, "Alev bitti, ortam guvenli.");
+            }
+            last_state = current_state;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(500)); // 500 ms'de bir kontrol et
+    }
+}
+
+// ─── Titreşim Sensörü Görevi ────────────────────────────────────────────────────
+static void vib_task(void *arg)
+{
+    static const char *TAG_VIB = "vib_task";
+    
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << VIB_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE, 
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&io_conf);
+
+    int last_state = -1;
+    ESP_LOGI(TAG_VIB, "Titreşim sensörü dinleniyor (GPIO %d)...", VIB_GPIO);
+
+    while (1) {
+        int current_state = gpio_get_level(VIB_GPIO);
+        
+        if (current_state != last_state) {
+            // SW-420 titreşim algıladığında hızlıca 1 ve 0 arasında gidip gelir
+            if (current_state == 1) {
+                ESP_LOGE(TAG_VIB, "DİKKAT: Titreşim / Sarsıntı algılandı!");
+            }
+            last_state = current_state;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(100)); // Titreşim anlık olduğu için 100ms ile biraz daha hızlı okuyoruz
+    }
+}
+
 // ─── WebSocket callback'leri ──────────────────────────────────────────────────
 static volatile bool    s_rsp_ready = false;
 static const uint8_t   *s_rsp_pcm   = NULL;
@@ -249,10 +389,26 @@ void app_main(void)
     // 7. RFID
     ESP_ERROR_CHECK(rfid_init());
 
-    // 7b. Duman sensörü + fan
+    // 7b. Duman sensörü + fan + LDR ADC başlatma
     ESP_ERROR_CHECK(smoke_sensor_init());
+    ESP_ERROR_CHECK(ldr_sensor_init());
     ESP_ERROR_CHECK(fan_control_init());
     xTaskCreatePinnedToCore(smoke_task, "smoke", 3072, NULL, 3, NULL, 0);
+
+    // 7c. DHT11 Sıcaklık ve Nem
+    xTaskCreatePinnedToCore(dht11_task, "dht11", 4096, NULL, 3, NULL, 0);
+
+    // 7d. LDR Işık Sensörü
+    xTaskCreatePinnedToCore(ldr_task, "ldr", 4096, NULL, 3, NULL, 0);
+
+    // 7e. PIR Hareket Sensörü
+    xTaskCreatePinnedToCore(pir_task, "pir", 4096, NULL, 3, NULL, 0);
+
+    // 7f. Alev Sensörü
+    xTaskCreatePinnedToCore(flame_task, "flame", 4096, NULL, 3, NULL, 0);
+
+    // 7g. Titreşim Sensörü
+    xTaskCreatePinnedToCore(vib_task, "vib", 4096, NULL, 3, NULL, 0);
 
     // 8. WebSocket → session key al
     display_switch(SCREEN_IDLE, "Sunucuya baglaniliyor...");

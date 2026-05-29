@@ -7,6 +7,8 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char *TAG = "smoke";
 
@@ -50,6 +52,31 @@ int smoke_sensor_read_avg(void)
             return -1;
         }
         sum += raw;
+        vTaskDelay(pdMS_TO_TICKS(10)); // Her örnek arasında 10ms bekle (Daha stabil ortalama için)
     }
     return (int)(sum / SMOKE_SAMPLE_COUNT);
+}
+
+// ─── LDR Işık Sensörü (Analog) ────────────────────────────────────────────────
+esp_err_t ldr_sensor_init(void)
+{
+    if (!s_adc) return ESP_ERR_INVALID_STATE; // s_adc başlatılmış olmalı
+    adc_oneshot_chan_cfg_t ch_cfg = {
+        .atten    = ADC_ATTEN_DB_12,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    return adc_oneshot_config_channel(s_adc, LDR_ADC_CHANNEL, &ch_cfg);
+}
+
+int ldr_sensor_read_avg(void)
+{
+    if (!s_adc) return -1;
+    int32_t sum = 0;
+    for (int i = 0; i < 10; i++) {
+        int raw = 0;
+        if (adc_oneshot_read(s_adc, LDR_ADC_CHANNEL, &raw) != ESP_OK) return -1;
+        sum += raw;
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    return (int)(sum / 10);
 }

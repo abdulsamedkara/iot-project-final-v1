@@ -708,6 +708,7 @@ const API = {
   upload:  id => `${_proto}//${_host}/api/session/${id}/photo`,
   rfidWs:  () => `${_wsProto}//${_host}/ws/rfid`,
   rfidPoll:() => `${_proto}//${_host}/api/rfid/pending`,
+  sessions:() => `${_proto}//${_host}/sessions`,
 };
 
 const $  = id => document.getElementById(id);
@@ -984,6 +985,60 @@ $('sheet-confirm').addEventListener('click', () => {
 });
 
 startRFID();
+
+async function syncActiveSession() {
+  try {
+    const res = await fetch(API.sessions(), { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.sessions && data.sessions.length > 0) {
+        const active = data.sessions[0];
+        
+        if (S.sessionId === active.session_id) {
+          // Zaten bu oturumdaysak fotoğraf durumunu check et
+          if (active.has_image && !S.photoUploaded && document.querySelector('.screen.active').id !== 'screen-status') {
+             S.photoUploaded = true;
+             updateStatusScreen();
+             navigate('status');
+          }
+          return;
+        }
+        
+        // Yeni / Açık bir oturum bulundu (arayüz sonradan açılmış)
+        stopRFID();
+        S.sessionId = active.session_id;
+        S.userName = active.username || 'Kullanıcı';
+        S.photoUploaded = active.has_image;
+        S.sessionStart = Date.now() - (active.age_sec * 1000);
+        
+        $('display-name').textContent = S.userName;
+        $('display-session-id').textContent = S.sessionId.slice(0, 6).toUpperCase();
+        
+        connDot.className = 'dot dot-connected';
+        connText.textContent = 'Giriş yapıldı';
+        
+        if (S.photoUploaded) {
+          updateStatusScreen();
+          navigate('status');
+        } else {
+          resetUpload();
+          navigate('upload');
+        }
+      } else {
+        // Sunucuda aktif oturum yoksa ana ekrana dön
+        if (S.sessionId) {
+          S.sessionId = null;
+          navigate('home', true);
+          showToast('Cihaz bağlantısı koptu', '🔌');
+          startRFID();
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+setInterval(syncActiveSession, 3000);
+syncActiveSession();
 </script>
 </body>
 </html>

@@ -19,7 +19,7 @@
 // ─── MFRC522 RFID ─────────────────────────────────────────────────────────────
 #define RFID_CS_GPIO        10
 #define RFID_RST_GPIO       (-1)   // RST yerine yazılımsal reset kullanılır
-#define RFID_SPI_FREQ_HZ    (5 * 1000 * 1000)  // 5 MHz
+#define RFID_SPI_FREQ_HZ    (2 * 1000 * 1000)  // 2 MHz (Breadboard'da çok daha stabildir)
 
 // ─── ILI9341 TFT Ekran ────────────────────────────────────────────────────────
 #define TFT_CS_GPIO         9
@@ -76,6 +76,23 @@
 // ─── Sensor Güncelleme Aralığı ────────────────────────────────────────────────
 #define SENSOR_UPDATE_MS    5000    // Her 5 saniyede duman sensörü oku
 
+// ─── DHT11 Sıcaklık ve Nem Sensörü ───────────────────────────────────────────
+#define DHT11_GPIO          47      // DHT11 Data pini
+#define DHT11_UPDATE_MS     2000    // DHT11 okuma aralığı (en az 2000 ms olmalı)
+
 // ─── LVGL Ekran Tamponu ───────────────────────────────────────────────────────
 // display.c ve main.c'de ortak kullanılır — buradan import edilir
 #define LVGL_BUF_LINES      40      // Çift tampon için satır sayısı
+
+// ─── LDR Işık Sensörü (Analog) ────────────────────────────────────────────────
+#define LDR_AOUT_GPIO       6               // LDR Analog pini (Gerilim bölücü ile)
+#define LDR_ADC_CHANNEL     ADC_CHANNEL_5   // GPIO6 = ADC1_CH5
+
+// ─── PIR Hareket Sensörü ──────────────────────────────────────────────────────
+#define PIR_GPIO            5               // PIR Sensör Veri (OUT) pini
+
+// ─── Alev Sensörü ─────────────────────────────────────────────────────────────
+#define FLAME_GPIO          48              // Alev Sensörü DO (Dijital Çıkış) pini
+
+// ─── Titreşim Sensörü ─────────────────────────────────────────────────────────
+#define VIB_GPIO            1               // SW-420 Titreşim Sensörü DO pini

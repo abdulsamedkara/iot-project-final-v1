@@ -59,5 +59,5 @@ void fan_set_duty(uint8_t duty)
 }
 
 void fan_off(void)  { fan_set_duty(0);   }
-void fan_half(void) { fan_set_duty(128); }
-void fan_full(void) { fan_set_duty(255); }
+void fan_half(void) { fan_set_duty(80);  } // Eskiden 128'di. Yüksek voltaj için %30 güç.
+void fan_full(void) { fan_set_duty(160); } // Eskiden 255'ti. Yüksek voltaj için %60 güç.

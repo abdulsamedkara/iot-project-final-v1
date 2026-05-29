@@ -114,6 +114,9 @@ async def ws_endpoint(ws: WebSocket):
         while True:
             message = await ws.receive()
 
+            if message.get("type") == "websocket.disconnect":
+                raise WebSocketDisconnect(code=message.get("code", 1000))
+
             if "text" in message:
                 try:
                     data = json.loads(message["text"])

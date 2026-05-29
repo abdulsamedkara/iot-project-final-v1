@@ -1,6 +1,7 @@
 idf_component_register(
     SRCS
         "main.c"
+        "dht11.c"
         "i2s_mic.c"
         "i2s_player.c"
         "crypto.c"

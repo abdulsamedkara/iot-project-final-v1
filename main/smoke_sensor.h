@@ -15,6 +15,10 @@ esp_err_t smoke_sensor_init(void);
  */
 int smoke_sensor_read_avg(void);
 
+// ─── LDR Işık Sensörü (Analog) ────────────────────────────────────────────────
+esp_err_t ldr_sensor_init(void);
+int ldr_sensor_read_avg(void);
+
 /**
  * @brief Isınma süresi doldu mu?
  */

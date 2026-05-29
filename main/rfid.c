@@ -29,6 +29,7 @@ static spi_device_handle_t s_spi = NULL;
 #define REG_MODE            0x11
 #define REG_TX_CONTROL      0x14
 #define REG_TX_ASK          0x15
+#define REG_RX_GAIN         0x26
 #define REG_CRC_RESULT_MSB  0x21
 #define REG_CRC_RESULT_LSB  0x22
 #define REG_T_MODE          0x2A
@@ -118,9 +119,10 @@ esp_err_t rfid_init(void)
     mfrc_write(REG_T_RELOAD_H,  0x00);
     mfrc_write(REG_T_RELOAD_L,  0x1E);
 
-    // CRC ön ayarı
-    mfrc_write(REG_TX_ASK, 0x40);
-    mfrc_write(REG_MODE,   0x3D);
+    // CRC ve Hassasiyet ön ayarı
+    mfrc_write(REG_TX_ASK,  0x40);
+    mfrc_write(REG_MODE,    0x3D);
+    mfrc_write(REG_RX_GAIN, 0x70); // Anten hassasiyetini max (48dB) seviyesine çek (Klon kartlarda stabiliteyi çok artırır)
 
     mfrc_antenna_on();
 
