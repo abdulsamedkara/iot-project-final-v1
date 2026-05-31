@@ -39,10 +39,26 @@ def synthesize(text: str) -> bytes:
 
     try:
         voice = _get_voice()
-        chunks = []
-        for chunk in voice.synthesize_stream_raw(text):
-            chunks.append(chunk)
-        pcm = b"".join(chunks)
+
+        if hasattr(voice, "synthesize_wav"):
+            # Piper 1.x: synthesize_wav → WAV bytes
+            wav_bytes = voice.synthesize_wav(text)
+            if isinstance(wav_bytes, (bytes, bytearray)) and len(wav_bytes) > 44:
+                pcm = bytes(wav_bytes[44:])  # WAV header 44 byte
+            else:
+                # BytesIO veya başka tip
+                raw = getattr(wav_bytes, "getvalue", lambda: wav_bytes)()
+                pcm = bytes(raw[44:])
+        elif hasattr(voice, "synthesize_stream_raw"):
+            chunks = [c for c in voice.synthesize_stream_raw(text)]
+            pcm = b"".join(chunks)
+        else:
+            # synthesize(text, wav_file) → wav dosyasına yazar
+            buf = io.BytesIO()
+            with wave.open(buf, "wb") as wf:
+                voice.synthesize(text, wf)
+            pcm = buf.getvalue()[44:]
+
         log.info(f"TTS: {len(text)} kar → {len(pcm)} byte PCM")
         return pcm
 
