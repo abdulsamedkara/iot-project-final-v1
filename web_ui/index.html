@@ -5,174 +5,475 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#F4F7FB">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SmartLab">
   <title>SmartLab Asistan</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:            #F4F7FB;
-      --surface:       #FFFFFF;
-      --surface-2:     #EEF2F7;
-      --accent:        #0288D1;
-      --accent-dim:    rgba(2,136,209,0.09);
-      --success:       #2E7D32;
-      --success-bg:    rgba(46,125,50,0.09);
-      --success-border:rgba(46,125,50,0.22);
-      --error:         #C62828;
-      --error-bg:      rgba(198,40,40,0.07);
-      --error-border:  rgba(198,40,40,0.22);
-      --warn:          #E65100;
-      --warn-bg:       rgba(230,81,0,0.07);
-      --warn-border:   rgba(230,81,0,0.22);
-      --text:          #0D1117;
-      --text-sec:      #4A5568;
-      --text-muted:    #8896A4;
-      --border:        rgba(0,0,0,0.07);
-      --border-med:    rgba(0,0,0,0.11);
-      --border-accent: rgba(2,136,209,0.22);
-      --shadow-sm:     0 1px 3px rgba(0,0,0,0.07);
-      --shadow-card:   0 2px 10px rgba(0,0,0,0.07);
-      --radius:        16px;
-      --radius-sm:     10px;
-      --font: 'Inter',system-ui,-apple-system,sans-serif;
-      --mono: 'JetBrains Mono',ui-monospace,monospace;
-    }
-    html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--font); -webkit-font-smoothing:antialiased; overflow:hidden; }
-    #app { position:relative; width:100%; height:100%; max-width:430px; margin:0 auto; display:flex; flex-direction:column; background:var(--bg); }
 
-    /* ── Screen transitions ── */
-    .screen { position:absolute; inset:0; display:flex; flex-direction:column; transform:translateX(100%); transition:transform 0.36s cubic-bezier(0.25,0.46,0.45,0.94); z-index:0; overflow:hidden; }
+    :root {
+      --bg:             #F4F7FB;
+      --surface:        #FFFFFF;
+      --surface-2:      #EEF2F7;
+      --surface-3:      #E2E8F0;
+      --accent:         #0288D1;
+      --accent-dim:     rgba(2,136,209,0.08);
+      --accent-glow:    rgba(2,136,209,0.20);
+      --success:        #2E7D32;
+      --success-bg:     rgba(46,125,50,0.08);
+      --success-border: rgba(46,125,50,0.22);
+      --error:          #C62828;
+      --error-bg:       rgba(198,40,40,0.07);
+      --error-border:   rgba(198,40,40,0.22);
+      --warn:           #E65100;
+      --warn-bg:        rgba(230,81,0,0.07);
+      --warn-border:    rgba(230,81,0,0.22);
+      --text:           #0D1117;
+      --text-sec:       #4A5568;
+      --text-muted:     #8896A4;
+      --border:         rgba(0,0,0,0.06);
+      --border-med:     rgba(0,0,0,0.10);
+      --border-strong:  rgba(0,0,0,0.16);
+      --border-accent:  rgba(2,136,209,0.22);
+      --shadow-sm:      0 1px 3px rgba(0,0,0,0.07),0 1px 2px rgba(0,0,0,0.04);
+      --shadow-card:    0 2px 10px rgba(0,0,0,0.07),0 1px 3px rgba(0,0,0,0.04);
+      --radius:         16px;
+      --radius-sm:      10px;
+      --font:           'Inter',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      --mono:           'JetBrains Mono',ui-monospace,'Courier New',monospace;
+    }
+
+    html, body { height:100%; background:var(--bg); color:var(--text); font-family:var(--font); -webkit-font-smoothing:antialiased; overflow:hidden; }
+
+    #app {
+      position:relative; width:100%; height:100%;
+      max-width:430px; margin:0 auto;
+      overflow:hidden; background:var(--bg);
+    }
+
+    /* ── Transition fix: z-index + reflow ── */
+    .screen {
+      position:absolute; inset:0;
+      display:flex; flex-direction:column;
+      transform:translateX(100%);
+      transition:transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94);
+      overflow-y:auto; overflow-x:hidden;
+      -webkit-overflow-scrolling:touch;
+      will-change:transform;
+      z-index:0;
+    }
     .screen.active  { transform:translateX(0);     z-index:2; }
     .screen.leaving { transform:translateX(-100%); z-index:1; }
-    #app.reverse .screen           { transform:translateX(-100%); }
-    #app.reverse .screen.active    { transform:translateX(0);    }
-    #app.reverse .screen.leaving   { transform:translateX(100%); }
+    #app.reverse .screen            { transform:translateX(-100%); }
+    #app.reverse .screen.active     { transform:translateX(0);     z-index:2; }
+    #app.reverse .screen.leaving    { transform:translateX(100%);  z-index:1; }
 
     /* ── Buttons ── */
-    .btn { width:100%; padding:14px 20px; border-radius:var(--radius-sm); font-size:15px; font-weight:600; font-family:var(--font); cursor:pointer; border:none; transition:opacity 0.15s,transform 0.15s; display:flex; align-items:center; justify-content:center; gap:8px; -webkit-tap-highlight-color:transparent; user-select:none; }
-    .btn:active:not(:disabled) { transform:scale(0.975); opacity:0.85; }
+    .btn {
+      width:100%; padding:15px 20px; border-radius:var(--radius-sm);
+      font-size:15px; font-weight:600; font-family:var(--font);
+      cursor:pointer; border:none;
+      transition:opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      letter-spacing:-0.01em;
+      -webkit-tap-highlight-color:transparent; user-select:none;
+    }
+    .btn:active:not(:disabled) { transform:scale(0.975); opacity:0.88; }
     .btn:disabled { opacity:0.38; cursor:not-allowed; }
     .btn-primary { background:var(--accent); color:#fff; box-shadow:0 2px 8px rgba(2,136,209,0.28); }
-    .btn-danger  { background:transparent; color:var(--error); border:1.5px solid var(--error-border); }
+    .btn-primary:active:not(:disabled) { box-shadow:none; }
+    .btn-outline { background:transparent; color:var(--accent); border:1.5px solid var(--border-accent); }
+    .btn-danger  { background:transparent; color:var(--error);  border:1.5px solid var(--error-border); }
     .btn-ghost   { background:var(--surface-2); color:var(--text-sec); border:1px solid var(--border-med); }
-    .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.65s linear infinite; flex-shrink:0; }
-    .spinner.dark { border-color:rgba(2,136,209,0.2); border-top-color:var(--accent); }
+
+    .spinner {
+      width:17px; height:17px;
+      border:2px solid rgba(255,255,255,0.3);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation:spin 0.65s linear infinite; flex-shrink:0;
+    }
+    .spinner.light { border-color:rgba(2,136,209,0.2); border-top-color:var(--accent); }
     @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Shared header (screens 2–3) ── */
+    .screen-header {
+      display:flex; align-items:center; gap:12px;
+      padding:14px 20px;
+      padding-top:max(18px,env(safe-area-inset-top));
+      border-bottom:1px solid var(--border);
+      background:rgba(244,247,251,0.94);
+      backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+      position:sticky; top:0; z-index:10; flex-shrink:0;
+    }
+    .screen-title { font-size:17px; font-weight:700; letter-spacing:-0.02em; }
+    .icon-btn {
+      width:36px; height:36px; border-radius:9px;
+      background:var(--surface); border:1px solid var(--border-med);
+      box-shadow:var(--shadow-sm);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; flex-shrink:0; color:var(--text);
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    /* ── Dots ── */
     .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-    .dot-accent  { background:var(--accent);  animation:pulse-blue  2s infinite; }
-    .dot-success { background:var(--success); animation:pulse-green 2s infinite; }
-    @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(46,125,50,0.5)}60%{box-shadow:0 0 0 5px rgba(46,125,50,0)}}
-    @keyframes pulse-blue  { 0%,100%{box-shadow:0 0 0 0 rgba(2,136,209,0.45)}60%{box-shadow:0 0 0 5px rgba(2,136,209,0)}}
-    @keyframes fadeUp { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
+    .dot-idle       { background:var(--text-muted); }
+    .dot-connecting { background:var(--warn);    animation:pulse-warn  1.2s infinite; }
+    .dot-connected  { background:var(--success); animation:pulse-green 2s   infinite; }
+    .dot-live       { background:var(--success); animation:pulse-green 2s   infinite; }
+    .dot-accent     { background:var(--accent);  animation:pulse-blue  2s   infinite; }
 
-    /* ════════════ SCREEN 1 — RFID HOME ════════════ */
-    #screen-home { background:var(--bg); justify-content:flex-start; }
-    #screen-home::before { content:''; position:absolute; inset:0; pointer-events:none; background-image:radial-gradient(circle,rgba(2,136,209,0.06) 1px,transparent 1px); background-size:24px 24px; }
-    .home-statusbar { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; padding:max(env(safe-area-inset-top),16px) 20px 10px; }
-    .statusbar-time { font-family:var(--mono); font-size:13px; font-weight:600; color:var(--text-muted); letter-spacing:1px; }
-    .statusbar-pill { display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:var(--accent); background:var(--accent-dim); border:1px solid var(--border-accent); padding:5px 11px 5px 9px; border-radius:20px; }
-    .home-scroll { position:relative; z-index:1; flex:1; display:flex; flex-direction:column; align-items:center; padding:4px 20px max(env(safe-area-inset-bottom),20px); gap:14px; overflow-y:auto; }
-    .home-brand { display:flex; flex-direction:column; align-items:center; gap:10px; padding:8px 0 4px; }
-    .logo-mark { width:56px; height:56px; border-radius:16px; background:var(--accent-dim); border:1.5px solid var(--border-accent); display:flex; align-items:center; justify-content:center; box-shadow:0 3px 12px rgba(2,136,209,0.15); }
-    .home-app-name { font-size:23px; font-weight:800; letter-spacing:-0.03em; }
-    .home-app-sub  { font-size:10.5px; font-weight:600; letter-spacing:1.8px; text-transform:uppercase; color:var(--text-muted); }
-    .rfid-card { width:100%; background:var(--surface); border:1px solid var(--border-med); border-radius:24px; box-shadow:var(--shadow-card); padding:28px 20px 24px; display:flex; flex-direction:column; align-items:center; gap:20px; position:relative; overflow:hidden; }
-    .rfid-card::before { content:''; position:absolute; top:0; left:18%; right:18%; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); }
-    .rfid-rings { position:relative; width:160px; height:160px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    @keyframes rfid-expand { 0%{opacity:0.55;transform:scale(0.84)}100%{opacity:0;transform:scale(1.14)} }
-    .rfid-ring { position:absolute; border-radius:50%; border:1.5px solid var(--accent); animation:rfid-expand 2.6s ease-out infinite; opacity:0; }
-    .rfid-ring.r1{width:60px;height:60px;animation-delay:0s}
-    .rfid-ring.r2{width:96px;height:96px;animation-delay:0.65s}
-    .rfid-ring.r3{width:132px;height:132px;animation-delay:1.3s}
-    .rfid-ring.r4{width:158px;height:158px;animation-delay:1.95s}
-    .rfid-icon-wrap { width:88px; height:60px; border-radius:12px; background:var(--surface-2); border:2px solid var(--border-accent); position:relative; z-index:1; display:flex; align-items:center; justify-content:center; color:var(--accent); overflow:hidden; box-shadow:0 2px 10px rgba(2,136,209,0.14); transition:all 0.3s; }
-    .rfid-icon-wrap.detected { border-color:var(--success); background:var(--success-bg); color:var(--success); }
-    @keyframes scan-line { 0%{top:16%;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:82%;opacity:0} }
-    .rfid-scan-line { position:absolute; left:0; right:0; height:1.5px; background:linear-gradient(90deg,transparent 5%,var(--accent) 35%,var(--accent) 65%,transparent 95%); animation:scan-line 2.6s ease-in-out infinite; }
+    @keyframes pulse-green {
+      0%,100% { box-shadow:0 0 0 0 rgba(46,125,50,0.5); }
+      60%     { box-shadow:0 0 0 5px rgba(46,125,50,0); }
+    }
+    @keyframes pulse-blue {
+      0%,100% { box-shadow:0 0 0 0 rgba(2,136,209,0.45); }
+      60%     { box-shadow:0 0 0 5px rgba(2,136,209,0); }
+    }
+    @keyframes pulse-warn {
+      0%,100% { box-shadow:0 0 0 0 rgba(230,81,0,0.45); }
+      60%     { box-shadow:0 0 0 5px rgba(230,81,0,0); }
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(6px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ════════════════════════════════
+       SCREEN 1 — RFID HOME
+    ════════════════════════════════ */
+    #screen-home {
+      background:var(--bg);
+      justify-content:flex-start;
+    }
+    #screen-home::before {
+      content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+      background-image:radial-gradient(circle, rgba(2,136,209,0.065) 1px, transparent 1px);
+      background-size:24px 24px;
+    }
+
+    .home-statusbar {
+      position:relative; z-index:1;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:max(env(safe-area-inset-top),16px) 20px 10px;
+    }
+    .statusbar-time {
+      font-family:var(--mono); font-size:13px; font-weight:600;
+      color:var(--text-muted); letter-spacing:1px;
+    }
+    .statusbar-pill {
+      display:flex; align-items:center; gap:6px;
+      font-size:11.5px; font-weight:700; color:var(--accent);
+      background:var(--accent-dim); border:1px solid var(--border-accent);
+      padding:5px 11px 5px 9px; border-radius:20px;
+    }
+
+    .home-scroll {
+      position:relative; z-index:1;
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      padding:4px 20px max(env(safe-area-inset-bottom),20px);
+      gap:14px; overflow-y:auto;
+    }
+
+    /* Branding */
+    .home-brand {
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+      padding:8px 0 4px;
+    }
+    .logo-mark {
+      width:56px; height:56px; border-radius:16px;
+      background:var(--accent-dim); border:1.5px solid var(--border-accent);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 3px 12px rgba(2,136,209,0.15);
+      animation:logoIn 0.5s 0.05s ease both;
+    }
+    @keyframes logoIn {
+      from { opacity:0; transform:scale(0.82) translateY(4px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    .home-app-name {
+      font-size:23px; font-weight:800; letter-spacing:-0.03em; color:var(--text);
+    }
+    .home-app-sub {
+      font-size:10.5px; font-weight:600; letter-spacing:1.8px;
+      text-transform:uppercase; color:var(--text-muted);
+    }
+
+    /* RFID card */
+    .rfid-card {
+      width:100%; background:var(--surface);
+      border:1px solid var(--border-med); border-radius:24px;
+      box-shadow:var(--shadow-card);
+      padding:28px 20px 24px;
+      display:flex; flex-direction:column; align-items:center; gap:20px;
+      position:relative; overflow:hidden;
+    }
+    .rfid-card::before {
+      content:''; position:absolute;
+      top:0; left:18%; right:18%; height:2px;
+      background:linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .rfid-rings {
+      position:relative; width:178px; height:178px;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    @keyframes rfid-expand {
+      0%   { opacity:0.55; transform:scale(0.84); }
+      100% { opacity:0;    transform:scale(1.14); }
+    }
+    .rfid-ring {
+      position:absolute; border-radius:50%;
+      border:1.5px solid var(--accent);
+      animation:rfid-expand 2.6s ease-out infinite; opacity:0;
+    }
+    .rfid-ring.r1 { width:68px;  height:68px;  animation-delay:0s; }
+    .rfid-ring.r2 { width:106px; height:106px; animation-delay:0.65s; }
+    .rfid-ring.r3 { width:144px; height:144px; animation-delay:1.3s; }
+    .rfid-ring.r4 { width:176px; height:176px; animation-delay:1.95s; }
+
+    .rfid-icon-wrap {
+      width:90px; height:62px; border-radius:12px;
+      background:var(--surface-2); border:2px solid var(--border-accent);
+      position:relative; z-index:1;
+      display:flex; align-items:center; justify-content:center;
+      color:var(--accent); overflow:hidden;
+      box-shadow:0 2px 10px rgba(2,136,209,0.14);
+      transition:border-color 0.3s, background 0.3s, color 0.3s, box-shadow 0.3s;
+    }
+    .rfid-icon-wrap.detected {
+      border-color:var(--success); background:var(--success-bg);
+      color:var(--success); box-shadow:0 4px 16px rgba(46,125,50,0.2);
+      animation:detected-pop 0.4s ease;
+    }
+    @keyframes detected-pop {
+      0%  { transform:scale(1); }
+      40% { transform:scale(1.1); }
+      100%{ transform:scale(1); }
+    }
+
+    /* scan line */
+    @keyframes scan-line {
+      0%   { top:16%; opacity:0; }
+      12%  { opacity:1; }
+      88%  { opacity:1; }
+      100% { top:82%; opacity:0; }
+    }
+    .rfid-scan-line {
+      position:absolute; left:0; right:0; height:1.5px;
+      background:linear-gradient(90deg, transparent 5%, var(--accent) 35%, var(--accent) 65%, transparent 95%);
+      animation:scan-line 2.6s ease-in-out infinite;
+    }
+
     .rfid-text { text-align:center; }
-    .rfid-label { font-size:20px; font-weight:800; letter-spacing:-0.025em; margin-bottom:6px; }
-    .rfid-sub   { font-size:13px; color:var(--text-muted); line-height:1.6; }
-    .rfid-demo-link { font-size:12px; color:var(--text-muted); text-decoration:underline; text-underline-offset:3px; background:none; border:none; cursor:pointer; font-family:var(--font); padding:2px 0; -webkit-tap-highlight-color:transparent; }
+    .rfid-label {
+      font-size:21px; font-weight:800; letter-spacing:-0.025em;
+      color:var(--text); margin-bottom:6px;
+    }
+    .rfid-sub { font-size:13px; color:var(--text-muted); line-height:1.6; }
 
-    /* ════════════ SCREEN 2 — DASHBOARD ════════════ */
-    #screen-dash { background:var(--bg); display:flex; flex-direction:column; }
+    /* Step hint strip */
+    .rfid-steps {
+      width:100%; display:flex; gap:0;
+      border:1px solid var(--border); border-radius:var(--radius-sm);
+      overflow:hidden; background:var(--surface);
+      box-shadow:var(--shadow-sm);
+    }
+    .rfid-step {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      gap:5px; padding:12px 8px;
+      border-right:1px solid var(--border);
+    }
+    .rfid-step:last-child { border-right:none; }
+    .step-num {
+      width:22px; height:22px; border-radius:50%;
+      background:var(--accent-dim); border:1px solid var(--border-accent);
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:800; color:var(--accent);
+    }
+    .step-label { font-size:10.5px; font-weight:600; color:var(--text-sec); text-align:center; line-height:1.3; }
 
-    /* Header */
-    .dash-header { display:flex; align-items:center; gap:10px; padding:max(env(safe-area-inset-top),14px) 16px 10px; background:rgba(244,247,251,0.94); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); flex-shrink:0; }
-    .dash-avatar { width:34px; height:34px; border-radius:50%; background:var(--accent-dim); border:1.5px solid var(--border-accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .dash-user { flex:1; min-width:0; }
-    .dash-user-name  { font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .dash-user-label { font-size:10px; color:var(--text-muted); font-weight:600; letter-spacing:0.5px; }
-    .dash-timer { font-family:var(--mono); font-size:13px; font-weight:700; color:var(--accent); letter-spacing:1px; }
-    .dash-logout { width:32px; height:32px; border-radius:8px; background:var(--surface); border:1px solid var(--border-med); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; color:var(--error); }
+    /* Lab info */
+    .lab-bar {
+      width:100%; background:var(--surface);
+      border:1px solid var(--border); border-radius:var(--radius);
+      padding:13px 18px;
+      display:flex; align-items:center; justify-content:space-around;
+      box-shadow:var(--shadow-sm);
+    }
+    .lab-item { display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .lab-label { font-size:9px; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:var(--text-muted); }
+    .lab-value { font-size:13px; font-weight:700; color:var(--text); }
+    .lab-value.ok { color:var(--success); }
+    .lab-sep { width:1px; height:28px; background:var(--border-med); }
 
-    /* Tab bar */
-    .tab-bar { display:flex; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
-    .tab-btn { flex:1; padding:11px 4px; font-size:12px; font-weight:600; color:var(--text-muted); background:none; border:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; border-bottom:2px solid transparent; transition:color 0.2s,border-color 0.2s; -webkit-tap-highlight-color:transparent; }
-    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
-    .tab-btn svg { flex-shrink:0; }
+    .rfid-demo-link {
+      font-size:12px; color:var(--text-muted);
+      text-decoration:underline; text-underline-offset:3px;
+      text-decoration-color:var(--border-strong);
+      background:none; border:none; cursor:pointer;
+      font-family:var(--font); padding:2px 0;
+      -webkit-tap-highlight-color:transparent;
+      margin-bottom:max(env(safe-area-inset-bottom),4px);
+    }
+    .rfid-demo-link:active { opacity:0.5; }
 
-    /* Tab panels */
-    .tab-panels { flex:1; overflow:hidden; position:relative; }
-    .tab-panel  { position:absolute; inset:0; overflow-y:auto; padding:12px 16px; padding-bottom:max(env(safe-area-inset-bottom),20px); display:none; flex-direction:column; gap:10px; }
-    .tab-panel.active { display:flex; }
-
-    /* ── Chat panel ── */
-    .chat-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-muted); font-size:13px; }
-    .chat-msgs  { display:flex; flex-direction:column; gap:8px; }
-    .msg-row    { display:flex; gap:8px; animation:fadeUp 0.2s ease; }
-    .msg-row.user      { justify-content:flex-end; }
-    .msg-row.assistant { justify-content:flex-start; }
-    .msg-bubble { max-width:82%; padding:10px 13px; border-radius:16px; font-size:13.5px; line-height:1.55; }
-    .msg-row.user      .msg-bubble { background:var(--accent);    color:#fff;          border-bottom-right-radius:4px; }
-    .msg-row.assistant .msg-bubble { background:var(--surface);   color:var(--text);   border:1px solid var(--border-med); border-bottom-left-radius:4px; box-shadow:var(--shadow-sm); }
-    .msg-time { font-size:10px; color:var(--text-muted); margin-top:3px; text-align:right; }
-    .ptt-hint { background:var(--accent-dim); border:1px solid var(--border-accent); border-radius:var(--radius-sm); padding:10px 13px; font-size:12px; color:var(--accent); display:flex; align-items:center; gap:8px; flex-shrink:0; }
-
-    /* ── Sensors panel ── */
-    .sensor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .sensor-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px; box-shadow:var(--shadow-sm); }
-    .sensor-card.wide { grid-column:1/-1; }
-    .sensor-label { font-size:9.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
-    .sensor-val   { font-size:22px; font-weight:700; color:var(--text); font-family:var(--mono); letter-spacing:-0.5px; }
-    .sensor-unit  { font-size:12px; font-weight:500; color:var(--text-muted); margin-left:3px; }
-    .sensor-badge { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; }
-    .sensor-badge.ok   { background:var(--success-bg); color:var(--success); border:1px solid var(--success-border); }
-    .sensor-badge.warn { background:var(--warn-bg);    color:var(--warn);    border:1px solid var(--warn-border); }
-    .sensor-badge.err  { background:var(--error-bg);   color:var(--error);   border:1px solid var(--error-border); }
-    .sensor-badge.muted{ background:var(--surface-2);  color:var(--text-muted); border:1px solid var(--border-med); }
-    .sensor-ts { font-size:10px; color:var(--text-muted); margin-top:4px; }
-    .no-sensor { color:var(--text-muted); font-size:13px; text-align:center; padding:20px; }
-
-    /* ── Photo panel ── */
-    .welcome-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-sm); flex-shrink:0; }
-    .camera-area { background:var(--surface); border:2px dashed var(--border-accent); border-radius:var(--radius); min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; cursor:pointer; position:relative; overflow:hidden; transition:background 0.2s; -webkit-tap-highlight-color:transparent; }
-    .camera-area:active { background:var(--accent-dim); }
-    .camera-area.has-photo { border-style:solid; border-color:var(--border-med); min-height:240px; }
-    #cam-placeholder { display:flex; flex-direction:column; align-items:center; gap:8px; }
-    .cam-icon-bg { width:56px; height:56px; border-radius:50%; background:var(--accent-dim); display:flex; align-items:center; justify-content:center; }
+    /* ════════════════════════════════
+       SCREEN 2 — PHOTO UPLOAD
+    ════════════════════════════════ */
+    .upload-body {
+      padding:16px 20px;
+      padding-bottom:max(env(safe-area-inset-bottom),24px);
+      display:flex; flex-direction:column; gap:12px; flex:1;
+    }
+    .welcome-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius); padding:14px 16px;
+      display:flex; align-items:center; gap:12px;
+      box-shadow:var(--shadow-sm);
+    }
+    .avatar {
+      width:42px; height:42px; border-radius:50%;
+      background:var(--accent-dim); border:1.5px solid var(--border-accent);
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .welcome-greeting { font-size:11px; color:var(--text-muted); margin-bottom:3px; }
+    .welcome-name { font-size:15px; font-weight:700; letter-spacing:-0.01em; }
+    .session-chip {
+      margin-left:auto; background:var(--accent-dim); border:1px solid var(--border-accent);
+      border-radius:20px; padding:4px 10px;
+      font-family:var(--mono); font-size:11px; font-weight:700;
+      color:var(--accent); letter-spacing:2px; flex-shrink:0;
+    }
+    .camera-area {
+      background:var(--surface); border:2px dashed var(--border-accent);
+      border-radius:var(--radius); min-height:220px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:12px; cursor:pointer; position:relative; overflow:hidden;
+      transition:border-color 0.2s, background 0.2s;
+      -webkit-tap-highlight-color:transparent; box-shadow:var(--shadow-sm);
+    }
+    .camera-area:active { background:var(--accent-dim); border-color:var(--accent); }
+    .camera-area.has-photo { border-style:solid; border-color:var(--border-med); min-height:260px; }
+    #cam-placeholder { display:flex; flex-direction:column; align-items:center; gap:10px; }
+    .cam-icon-bg {
+      width:60px; height:60px; border-radius:50%;
+      background:var(--accent-dim);
+      display:flex; align-items:center; justify-content:center;
+    }
     .cam-label { font-size:14px; font-weight:600; color:var(--text-sec); }
     .cam-sub   { font-size:12px; color:var(--text-muted); }
     #preview-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; }
-    .preview-overlay { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(to top,rgba(0,0,0,0.65),transparent); padding:10px; display:none; justify-content:flex-end; }
-    .change-pill { background:rgba(0,0,0,0.55); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.15); color:#fff; border-radius:20px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; }
-    .upload-msg { border-radius:var(--radius-sm); padding:10px 13px; display:flex; align-items:center; gap:9px; font-size:13px; animation:fadeUp 0.25s ease; }
-    .upload-msg.uploading { background:var(--accent-dim);  border:1px solid var(--border-accent); color:var(--accent); }
-    .upload-msg.success   { background:var(--success-bg);  border:1px solid var(--success-border); color:var(--success); font-weight:600; }
-    .upload-msg.error     { background:var(--error-bg);    border:1px solid var(--error-border);   color:var(--error); }
-    .upload-msg.hidden    { display:none; }
-    .progress-track { height:3px; background:var(--surface-2); border-radius:2px; overflow:hidden; }
-    .progress-fill  { height:100%; background:var(--accent); width:0%; transition:width 0.25s ease; }
+    .preview-overlay {
+      position:absolute; bottom:0; left:0; right:0;
+      background:linear-gradient(to top,rgba(0,0,0,0.68),transparent);
+      padding:12px; display:none; justify-content:flex-end;
+    }
+    .change-pill {
+      background:rgba(0,0,0,0.55); backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.15); color:#fff;
+      border-radius:20px; padding:7px 14px; font-size:12px; font-weight:500;
+      cursor:pointer; display:flex; align-items:center; gap:5px;
+    }
+    .msg-box {
+      border-radius:var(--radius-sm); padding:12px 14px;
+      display:flex; align-items:center; gap:10px; font-size:13px;
+      animation:fadeUp 0.25s ease;
+    }
+    .msg-box.uploading { background:var(--accent-dim);  border:1px solid var(--border-accent);  color:var(--accent); }
+    .msg-box.success   { background:var(--success-bg);  border:1px solid var(--success-border); color:var(--success); font-weight:600; }
+    .msg-box.error     { background:var(--error-bg);    border:1px solid var(--error-border);   color:var(--error); }
+    .msg-box.hidden    { display:none; }
+    .progress-track { height:3px; background:var(--surface-3); border-radius:2px; overflow:hidden; }
+    .progress-fill  { height:100%; background:var(--accent); border-radius:2px; width:0%; transition:width 0.25s ease; }
+    .ptt-note {
+      background:var(--warn-bg); border:1px solid var(--warn-border);
+      border-radius:var(--radius-sm); padding:11px 14px;
+      font-size:12px; color:var(--warn);
+      display:flex; gap:9px; align-items:flex-start;
+      animation:fadeUp 0.3s ease;
+    }
+    .ptt-note svg { flex-shrink:0; margin-top:1px; }
 
-    /* ── Sheet + Toast ── */
-    .sheet-overlay { position:fixed; inset:0; background:rgba(13,17,23,0.35); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity 0.28s; }
+    /* ════════════════════════════════
+       SCREEN 3 — SESSION STATUS
+    ════════════════════════════════ */
+    .status-body {
+      padding:16px 20px;
+      padding-bottom:max(env(safe-area-inset-bottom),24px);
+      display:flex; flex-direction:column; gap:12px; flex:1;
+    }
+    .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .stat-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--radius-sm); padding:14px;
+      box-shadow:var(--shadow-sm);
+    }
+    .stat-card.wide { grid-column:1/-1; }
+    .stat-label {
+      font-size:9.5px; font-weight:700; letter-spacing:1px;
+      text-transform:uppercase; color:var(--text-muted); margin-bottom:9px;
+    }
+    .stat-value {
+      font-size:14px; font-weight:600; color:var(--text);
+      display:flex; align-items:center; gap:7px;
+    }
+    .stat-value.mono  { font-family:var(--mono); font-size:16px; letter-spacing:3px; color:var(--accent); }
+    .stat-value.timer { font-family:var(--mono); font-size:26px; font-weight:700; color:var(--accent); letter-spacing:2px; }
+    .badge {
+      display:inline-flex; align-items:center; gap:5px;
+      font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px;
+    }
+    .badge.success { background:var(--success-bg); color:var(--success); border:1px solid var(--success-border); }
+    .badge.warn    { background:var(--warn-bg);    color:var(--warn);    border:1px solid var(--warn-border); }
+    .live-chip {
+      margin-left:auto; display:flex; align-items:center; gap:6px;
+      font-size:11px; font-weight:700; color:var(--success); letter-spacing:0.8px;
+    }
+    .divider { height:1px; background:var(--border); }
+    .action-group { display:flex; flex-direction:column; gap:10px; }
+
+    /* ── Bottom sheet ── */
+    .sheet-overlay {
+      position:fixed; inset:0;
+      background:rgba(13,17,23,0.35); backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+      z-index:200; display:flex; align-items:flex-end;
+      opacity:0; pointer-events:none; transition:opacity 0.28s;
+    }
     .sheet-overlay.open { opacity:1; pointer-events:all; }
     .sheet-overlay.open .sheet { transform:translateY(0); }
-    .sheet { background:var(--surface); border-top:1px solid var(--border-med); border-radius:24px 24px 0 0; padding:20px 24px; padding-bottom:max(env(safe-area-inset-bottom),28px); width:100%; max-width:430px; margin:0 auto; display:flex; flex-direction:column; gap:12px; transform:translateY(100%); transition:transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94); }
-    .sheet-handle { width:36px; height:4px; background:var(--border-med); border-radius:2px; margin:0 auto 4px; }
-    .sheet-title  { font-size:17px; font-weight:700; text-align:center; }
-    .sheet-sub    { font-size:14px; color:var(--text-sec); text-align:center; line-height:1.5; }
-    .toast { position:fixed; bottom:max(28px,calc(env(safe-area-inset-bottom)+16px)); left:50%; transform:translateX(-50%) translateY(70px); background:#1A2030; border:1px solid rgba(255,255,255,0.08); color:#F0F4F8; padding:10px 18px; border-radius:24px; font-size:13px; font-weight:500; white-space:nowrap; transition:transform 0.28s,opacity 0.28s; opacity:0; z-index:300; display:flex; align-items:center; gap:7px; pointer-events:none; max-width:calc(100vw - 48px); }
+    .sheet {
+      background:var(--surface); border-top:1px solid var(--border-med);
+      border-radius:24px 24px 0 0;
+      padding:20px 24px; padding-bottom:max(env(safe-area-inset-bottom),28px);
+      width:100%; max-width:430px; margin:0 auto;
+      display:flex; flex-direction:column; gap:12px;
+      transform:translateY(100%);
+      transition:transform 0.32s cubic-bezier(0.25,0.46,0.45,0.94);
+      box-shadow:0 -4px 24px rgba(0,0,0,0.10);
+    }
+    .sheet-handle { width:36px; height:4px; background:var(--border-strong); border-radius:2px; margin:0 auto 4px; }
+    .sheet-title { font-size:17px; font-weight:700; text-align:center; }
+    .sheet-sub   { font-size:14px; color:var(--text-sec); text-align:center; line-height:1.5; }
+
+    /* ── Toast ── */
+    .toast {
+      position:fixed;
+      bottom:max(28px,calc(env(safe-area-inset-bottom) + 16px));
+      left:50%; transform:translateX(-50%) translateY(70px);
+      background:#1A2030; border:1px solid rgba(255,255,255,0.08); color:#F0F4F8;
+      padding:11px 18px; border-radius:24px;
+      font-size:13px; font-weight:500; white-space:nowrap;
+      transition:transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.28s;
+      opacity:0; z-index:300;
+      display:flex; align-items:center; gap:7px;
+      pointer-events:none; max-width:calc(100vw - 48px);
+      box-shadow:0 4px 20px rgba(0,0,0,0.18);
+    }
     .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
     #file-input { display:none; }
   </style>
@@ -180,7 +481,7 @@
 <body>
 <div id="app">
 
-  <!-- ═══ SCREEN 1: RFID HOME ═══ -->
+  <!-- SCREEN 1 — RFID HOME -->
   <div class="screen active" id="screen-home">
     <div class="home-statusbar">
       <div class="statusbar-time" id="clock">--:--</div>
@@ -189,24 +490,34 @@
         <span id="conn-text">Okuyucu Aktif</span>
       </div>
     </div>
+
     <div class="home-scroll">
       <div class="home-brand">
         <div class="logo-mark">
           <svg width="30" height="30" viewBox="0 0 42 42" fill="none">
             <path d="M16 7h10v11.5l6 10.5A3.5 3.5 0 0128.8 35H13.2A3.5 3.5 0 0110 29l6-10.5V7z" stroke="#0288D1" stroke-width="1.8" stroke-linejoin="round"/>
             <line x1="16" y1="11" x2="26" y2="11" stroke="#0288D1" stroke-width="1.5"/>
-            <line x1="4" y1="23" x2="10" y2="23" stroke="#0288D1" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="4"  y1="23" x2="10" y2="23" stroke="#0288D1" stroke-width="1.5" stroke-linecap="round"/>
             <line x1="32" y1="23" x2="38" y2="23" stroke="#0288D1" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="21" cy="1.5" r="2" fill="#0288D1"/>
+            <line x1="21" y1="1.5" x2="21" y2="6.5" stroke="#0288D1" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="4"  cy="23" r="2"   fill="#0288D1"/>
+            <circle cx="38" cy="23" r="2"   fill="#0288D1"/>
+            <circle cx="21" cy="1.5" r="2"  fill="#0288D1"/>
+            <circle cx="18" cy="26" r="2.2" fill="rgba(2,136,209,0.35)"/>
+            <circle cx="24" cy="28" r="2.8" fill="rgba(2,136,209,0.25)"/>
+            <circle cx="21" cy="24" r="1.4" fill="rgba(2,136,209,0.5)"/>
           </svg>
         </div>
         <div class="home-app-name">SmartLab Asistan</div>
         <div class="home-app-sub">IoT Lab Yönetim Sistemi</div>
       </div>
+
       <div class="rfid-card">
         <div class="rfid-rings">
-          <div class="rfid-ring r1"></div><div class="rfid-ring r2"></div>
-          <div class="rfid-ring r3"></div><div class="rfid-ring r4"></div>
+          <div class="rfid-ring r1"></div>
+          <div class="rfid-ring r2"></div>
+          <div class="rfid-ring r3"></div>
+          <div class="rfid-ring r4"></div>
           <div class="rfid-icon-wrap" id="rfid-icon">
             <div class="rfid-scan-line"></div>
             <svg width="48" height="34" viewBox="0 0 48 34" fill="none">
@@ -219,430 +530,515 @@
             </svg>
           </div>
         </div>
+
         <div class="rfid-text">
           <div class="rfid-label" id="rfid-label">Kartınızı Okutun</div>
           <div class="rfid-sub" id="rfid-sub">ESP32 RFID okuyucusuna kimlik kartınızı yaklaştırın</div>
         </div>
       </div>
+
       <button class="rfid-demo-link" id="demo-card-btn">Demo: kart okut</button>
     </div>
   </div>
 
-  <!-- ═══ SCREEN 2: DASHBOARD ═══ -->
-  <div class="screen" id="screen-dash">
-    <!-- Header -->
-    <div class="dash-header">
-      <div class="dash-avatar">
+  <!-- SCREEN 2 — PHOTO UPLOAD -->
+  <div class="screen" id="screen-upload">
+    <div class="screen-header">
+      <div class="icon-btn" id="upload-back" role="button" aria-label="Geri">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <circle cx="9" cy="6" r="3" stroke="#0288D1" stroke-width="1.4"/>
-          <path d="M2 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="#0288D1" stroke-width="1.4" stroke-linecap="round"/>
+          <path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <div class="dash-user">
-        <div class="dash-user-name" id="dash-user-name">—</div>
-        <div class="dash-user-label">SmartLab Oturumu</div>
+      <div class="screen-title">Fotoğraf Yükle</div>
+    </div>
+
+    <div class="upload-body">
+      <div class="welcome-card">
+        <div class="avatar">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="7" r="3.5" stroke="#0288D1" stroke-width="1.4"/>
+            <path d="M3 19c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="#0288D1" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="welcome-greeting">Hoşgeldin</div>
+          <div class="welcome-name" id="display-name">—</div>
+        </div>
+        <div class="session-chip" id="display-session-id">——</div>
       </div>
-      <div class="dash-timer" id="dash-timer">00:00</div>
-      <div class="dash-logout" id="dash-logout-btn" title="Oturumu kapat">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M10 8H2M2 8l3-3M2 8l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M7 2.5h7v11H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+
+      <div class="camera-area" id="camera-area" role="button" aria-label="Fotoğraf çek veya seç" tabindex="0">
+        <div id="cam-placeholder">
+          <div class="cam-icon-bg">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect x="2" y="8" width="24" height="18" rx="3" stroke="#0288D1" stroke-width="1.5"/>
+              <circle cx="14" cy="17" r="5" stroke="#0288D1" stroke-width="1.5"/>
+              <path d="M9.5 8V7A2 2 0 0111.5 5h5A2 2 0 0118.5 7v1" stroke="#0288D1" stroke-width="1.5"/>
+              <circle cx="22.5" cy="12" r="1.2" fill="#0288D1"/>
+            </svg>
+          </div>
+          <div class="cam-label">Fotoğraf çek veya seç</div>
+          <div class="cam-sub">Dokunun</div>
+        </div>
+        <img id="preview-img" alt="Seçilen fotoğraf"/>
+        <div class="preview-overlay" id="preview-overlay">
+          <div class="change-pill" id="change-pill">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path d="M2 6.5A4.5 4.5 0 1111 6.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+              <path d="M11 6.5l-1.5 1.5M11 6.5l1.5 1.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            Değiştir
+          </div>
+        </div>
+      </div>
+
+      <div class="msg-box hidden" id="upload-msg"></div>
+      <div class="progress-track" id="progress-track" style="display:none">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+
+      <button class="btn btn-primary" id="send-btn" disabled>Fotoğrafı Gönder</button>
+
+      <div class="ptt-note" id="ptt-note" style="display:none">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <circle cx="7.5" cy="7.5" r="6.5" stroke="var(--warn)" stroke-width="1.2"/>
+          <path d="M7.5 5v4" stroke="var(--warn)" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="7.5" cy="11" r="0.8" fill="var(--warn)"/>
         </svg>
+        <span>Fotoğrafı gönderdikten sonra ESP32'deki butona basın</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3 — SESSION STATUS -->
+  <div class="screen" id="screen-status">
+    <div class="screen-header">
+      <div class="screen-title">Oturum Durumu</div>
+      <div class="live-chip">
+        <div class="dot dot-live"></div>
+        CANLI
       </div>
     </div>
 
-    <!-- Tab bar -->
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="chat">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M2 3h14a1 1 0 011 1v8a1 1 0 01-1 1H5l-3 3V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-        </svg>
-        Sohbet
-      </button>
-      <button class="tab-btn" data-tab="sensors">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M9 2v3M9 13v3M2 9h3M13 9h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-          <circle cx="9" cy="9" r="3.5" stroke="currentColor" stroke-width="1.4"/>
-        </svg>
-        Sensörler
-      </button>
-      <button class="tab-btn" data-tab="photo">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <rect x="1" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/>
-          <circle cx="9" cy="10" r="3" stroke="currentColor" stroke-width="1.4"/>
-          <path d="M6 4V3a1 1 0 011-1h4a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.4"/>
-        </svg>
-        Fotoğraf
-      </button>
-    </div>
-
-    <!-- Tab panels -->
-    <div class="tab-panels">
-
-      <!-- Chat -->
-      <div class="tab-panel active" id="tab-chat">
-        <div id="chat-empty" class="chat-empty">
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" opacity="0.35">
-            <path d="M4 6h32a2 2 0 012 2v18a2 2 0 01-2 2H10l-6 6V8a2 2 0 012-2z" stroke="#0288D1" stroke-width="1.8"/>
-          </svg>
-          <span>Henüz mesaj yok</span>
-          <span style="font-size:11px">PTT butonuna basıp konuşun</span>
+    <div class="status-body">
+      <div class="status-grid">
+        <div class="stat-card">
+          <div class="stat-label">Bağlantı</div>
+          <div class="stat-value">
+            <div class="dot dot-connected"></div>
+            Aktif
+          </div>
         </div>
-        <div id="chat-msgs" class="chat-msgs" style="display:none"></div>
-        <div class="ptt-hint">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="6" stroke="var(--accent)" stroke-width="1.2"/>
-            <path d="M7 4v3.5" stroke="var(--accent)" stroke-width="1.2" stroke-linecap="round"/>
-            <circle cx="7" cy="10" r=".7" fill="var(--accent)"/>
-          </svg>
-          ESP32'deki PTT butonuna basarak soru sorun
+        <div class="stat-card">
+          <div class="stat-label">Oturum ID</div>
+          <div class="stat-value mono" id="stat-session-id">——</div>
+        </div>
+        <div class="stat-card wide">
+          <div class="stat-label">Kullanıcı</div>
+          <div class="stat-value">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="5.5" r="3" stroke="#0288D1" stroke-width="1.3"/>
+              <path d="M2 15c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#0288D1" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <span id="stat-user-name">—</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Fotoğraf</div>
+          <div class="stat-value">
+            <span class="badge warn" id="photo-badge">Bekleniyor</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Oturum Süresi</div>
+          <div class="stat-value timer" id="session-timer">00:00</div>
         </div>
       </div>
 
-      <!-- Sensors -->
-      <div class="tab-panel" id="tab-sensors">
-        <div id="sensors-empty" class="no-sensor">ESP32 sensör verisi bekleniyor...</div>
-        <div id="sensors-grid" class="sensor-grid" style="display:none"></div>
-      </div>
+      <div class="divider"></div>
 
-      <!-- Photo -->
-      <div class="tab-panel" id="tab-photo">
-        <div class="welcome-card">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="6" r="3" stroke="#0288D1" stroke-width="1.3"/>
-            <path d="M2 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="#0288D1" stroke-width="1.3" stroke-linecap="round"/>
+      <div class="action-group">
+        <button class="btn btn-primary" id="new-photo-btn">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+            <rect x="1" y="5" width="15" height="11" rx="2.5" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="8.5" cy="10.5" r="3" stroke="#fff" stroke-width="1.5"/>
+            <path d="M6 5V4A2 2 0 018 2h1a2 2 0 012 2v1" stroke="#fff" stroke-width="1.5"/>
           </svg>
-          <span style="font-size:13px;font-weight:600" id="photo-user-name">—</span>
-          <span style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--accent);font-weight:700" id="photo-session-id">——</span>
-        </div>
-        <div class="camera-area" id="camera-area" role="button" tabindex="0">
-          <div id="cam-placeholder">
-            <div class="cam-icon-bg">
-              <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
-                <rect x="2" y="8" width="24" height="18" rx="3" stroke="#0288D1" stroke-width="1.5"/>
-                <circle cx="14" cy="17" r="5" stroke="#0288D1" stroke-width="1.5"/>
-                <path d="M9.5 8V7A2 2 0 0111.5 5h5A2 2 0 0118.5 7v1" stroke="#0288D1" stroke-width="1.5"/>
-              </svg>
-            </div>
-            <div class="cam-label">Fotoğraf çek veya seç</div>
-            <div class="cam-sub">Dokunun</div>
-          </div>
-          <img id="preview-img" alt=""/>
-          <div class="preview-overlay" id="preview-overlay">
-            <div class="change-pill" id="change-pill">
-              <svg width="12" height="12" viewBox="0 0 13 13" fill="none">
-                <path d="M2 6.5A4.5 4.5 0 1111 6.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
-                <path d="M11 6.5l-1.5 1.5M11 6.5l1.5 1.5" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/>
-              </svg>
-              Değiştir
-            </div>
-          </div>
-        </div>
-        <div class="upload-msg hidden" id="upload-msg"></div>
-        <div class="progress-track" id="progress-track" style="display:none"><div class="progress-fill" id="progress-fill"></div></div>
-        <button class="btn btn-primary" id="send-btn" disabled>Fotoğrafı Gönder</button>
+          Yeni Fotoğraf Çek
+        </button>
+        <button class="btn btn-danger" id="logout-btn">
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+            <path d="M11 8.5H2M2 8.5l3-3M2 8.5l3 3" stroke="var(--error)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7.5 2.5h7v12h-7" stroke="var(--error)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Oturumu Kapat
+        </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Logout sheet -->
-<div class="sheet-overlay" id="sheet-overlay">
+<div class="sheet-overlay" id="sheet-overlay" role="dialog" aria-modal="true">
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title">Oturumu Kapat</div>
-    <div class="sheet-sub">Bu oturumu kapatmak istiyor musunuz?</div>
-    <button class="btn btn-danger"  id="sheet-confirm">Oturumu Kapat</button>
-    <button class="btn btn-ghost"   id="sheet-cancel">İptal</button>
+    <div class="sheet-sub">Bu oturumu kapatmak istediğinizden<br>emin misiniz?</div>
+    <button class="btn btn-danger" id="sheet-confirm">Oturumu Kapat</button>
+    <button class="btn btn-ghost"  id="sheet-cancel">İptal</button>
   </div>
 </div>
-<div class="toast" id="toast"></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="file-input" accept="image/*" capture="environment">
 
 <script>
-const _proto   = location.protocol;
-const _host    = location.host;
+const S = {
+  sessionId: null, userName: null,
+  photoFile: null, photoUploaded: false,
+  sessionStart: null, timerTick: null,
+};
+
+/* Dynamic host — works when served from any IP/port */
+const _proto = location.protocol;
+const _host  = location.host;
 const _wsProto = _proto === 'https:' ? 'wss:' : 'ws:';
 
 const API = {
-  base:      `${_proto}//${_host}`,
-  upload:    id => `${_proto}//${_host}/api/session/${id}/photo`,
-  rfidWs:    () => `${_wsProto}//${_host}/ws/rfid`,
-  rfidPoll:  () => `${_proto}//${_host}/api/rfid/pending`,
-  demo:      () => `${_proto}//${_host}/api/demo/session`,
-  sessData:  id => `${_proto}//${_host}/api/session/${id}/data`,
+  base:    `${_proto}//${_host}`,
+  upload:  id => `${_proto}//${_host}/api/session/${id}/photo`,
+  rfidWs:  () => `${_wsProto}//${_host}/ws/rfid`,
+  rfidPoll:() => `${_proto}//${_host}/api/rfid/pending`,
+  sessions:() => `${_proto}//${_host}/sessions`,
 };
 
-const S = { sessionId:null, userName:null, sessionStart:null, timerTick:null,
-            photoFile:null, photoUploaded:false, dataPoll:null, lastMsgCount:0 };
-
-const $ = id => document.getElementById(id);
-const app = $('app');
+const $  = id => document.getElementById(id);
+const app            = $('app');
+const connDot        = $('conn-dot');
+const connText       = $('conn-text');
+const cameraArea     = $('camera-area');
+const fileInput      = $('file-input');
+const previewImg     = $('preview-img');
+const previewOverlay = $('preview-overlay');
+const camPlaceholder = $('cam-placeholder');
+const sendBtn        = $('send-btn');
+const uploadMsg      = $('upload-msg');
+const progressTrack  = $('progress-track');
+const progressFill   = $('progress-fill');
+const pttNote        = $('ptt-note');
+const sheetOverlay   = $('sheet-overlay');
+const toast          = $('toast');
 
 /* ── Clock ── */
-function updateClock() { $('clock').textContent = new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}); }
-updateClock(); setInterval(updateClock,30000);
-
-/* ── Toast ── */
-let _tt;
-function toast(msg,icon='✓'){
-  const t=$('toast'); t.innerHTML=`<span>${icon}</span><span>${msg}</span>`;
-  t.classList.add('show'); clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove('show'),3000);
+function updateClock() {
+  $('clock').textContent = new Date().toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
 }
-
-const delay = ms => new Promise(r=>setTimeout(r,ms));
+updateClock();
+setInterval(updateClock, 30000);
 
 /* ── Navigation ── */
-function navigate(toId, back=false){
-  const cur=document.querySelector('.screen.active'), next=$('screen-'+toId);
-  if(!next||cur===next)return;
-  back ? app.classList.add('reverse') : app.classList.remove('reverse');
+function navigate(toId, back = false) {
+  const current = document.querySelector('.screen.active');
+  const next    = $('screen-' + toId);
+  if (!next || current === next) return;
+
+  if (back) app.classList.add('reverse');
+  else      app.classList.remove('reverse');
+
   void next.offsetHeight;
-  cur.classList.add('leaving'); cur.classList.remove('active'); next.classList.add('active');
-  setTimeout(()=>{ cur.classList.remove('leaving'); app.classList.remove('reverse'); },400);
+
+  current.classList.add('leaving');
+  current.classList.remove('active');
+  next.classList.add('active');
+
+  setTimeout(() => {
+    current.classList.remove('leaving');
+    app.classList.remove('reverse');
+  }, 420);
 }
 
-/* ── Tabs ── */
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const tab=btn.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
-  });
-});
-
-/* ════ SCREEN 1: RFID ════ */
-let _rfidHandle=null;
-function stopRFID(){ if(_rfidHandle){ if(_rfidHandle instanceof WebSocket)_rfidHandle.close(); else clearTimeout(_rfidHandle); _rfidHandle=null; } }
-
-async function onCardDetected(sessionId, userName){
-  stopRFID();
-  $('rfid-icon').classList.add('detected');
-  $('rfid-label').textContent=`Hoşgeldin, ${userName.split(' ')[0]}!`;
-  $('rfid-sub').textContent='Kimlik doğrulandı ✓';
-  $('conn-dot').className='dot dot-success';
-  $('conn-text').textContent='Giriş yapıldı';
-
-  S.sessionId=sessionId; S.userName=userName;
-  S.sessionStart=Date.now(); S.photoFile=null; S.photoUploaded=false; S.lastMsgCount=0;
-
-  $('dash-user-name').textContent=userName;
-  $('photo-user-name').textContent=userName;
-  $('photo-session-id').textContent=sessionId.slice(0,8).toUpperCase();
-
-  await delay(1000);
-  navigate('dash');
-  startDashboard();
-
-  $('rfid-icon').classList.remove('detected');
-  $('rfid-label').textContent='Kartınızı Okutun';
-  $('rfid-sub').textContent='ESP32 RFID okuyucusuna kimlik kartınızı yaklaştırın';
-  $('conn-dot').className='dot dot-accent';
-  $('conn-text').textContent='Okuyucu Aktif';
+/* ── Toast ── */
+let _toastTimer;
+function showToast(msg, icon = '✓') {
+  toast.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  toast.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
 }
 
-function startPoll(){
-  async function poll(){
-    try{
-      const r=await fetch(API.rfidPoll(),{signal:AbortSignal.timeout(3000)});
-      if(r.status===200){ const d=await r.json().catch(()=>({})); if(d.session_id){onCardDetected(d.session_id,d.user_name||'Kullanıcı');return;} }
-    }catch{}
-    _rfidHandle=setTimeout(poll,2000);
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+/* ── Screen 1: RFID ── */
+let _rfidHandle = null;
+
+function stopRFID() {
+  if (_rfidHandle) {
+    if (_rfidHandle instanceof WebSocket) _rfidHandle.close();
+    else clearTimeout(_rfidHandle);
+    _rfidHandle = null;
   }
-  _rfidHandle=setTimeout(poll,700);
 }
 
-function startRFID(){
+async function onCardDetected(sessionId, userName) {
   stopRFID();
-  try{
-    const ws=new WebSocket(API.rfidWs());
-    ws.onopen=()=>{ _rfidHandle=ws; };
-    ws.onmessage=e=>{ try{ const d=JSON.parse(e.data); if(d.event==='card_detected')onCardDetected(d.session_id,d.user_name||'Kullanıcı'); }catch{} };
-    ws.onerror=()=>ws.close();
-    ws.onclose=()=>{ if(_rfidHandle===ws){_rfidHandle=null;startPoll();} };
-    _rfidHandle=ws;
-  }catch{startPoll();}
+  const icon = $('rfid-icon');
+  icon.classList.add('detected');
+  $('rfid-label').textContent = `Hoşgeldin, ${userName.split(' ')[0]}!`;
+  $('rfid-sub').textContent   = 'Kimlik doğrulandı ✓';
+  connDot.className = 'dot dot-connected';
+  connText.textContent = 'Giriş yapıldı';
+
+  S.sessionId = sessionId; S.userName = userName;
+  S.sessionStart = Date.now(); S.photoFile = null; S.photoUploaded = false;
+  $('display-name').textContent = S.userName;
+  $('display-session-id').textContent = S.sessionId.slice(0, 6).toUpperCase();
+
+  await delay(1100);
+  navigate('upload');
+  resetUpload();
+  icon.classList.remove('detected');
+  $('rfid-label').textContent = 'Kartınızı Okutun';
+  $('rfid-sub').textContent   = 'ESP32 RFID okuyucusuna kimlik kartınızı yaklaştırın';
+  connDot.className = 'dot dot-accent';
+  connText.textContent = 'Okuyucu Aktif';
 }
 
-$('demo-card-btn').addEventListener('click',async()=>{
-  try{
-    const r=await fetch(API.demo(),{method:'POST',signal:AbortSignal.timeout(4000)});
-    if(r.ok){const d=await r.json();onCardDetected(d.session_id,d.user_name);return;}
-  }catch{}
-  onCardDetected('demo'+Date.now().toString(36),'Demo Kullanıcı');
-});
-
-/* ════ SCREEN 2: DASHBOARD ════ */
-function startDashboard(){
-  // Timer
-  clearInterval(S.timerTick);
-  S.timerTick=setInterval(()=>{
-    const s=Math.floor((Date.now()-S.sessionStart)/1000);
-    $('dash-timer').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-  },1000);
-
-  // Reset photo tab
-  resetPhoto();
-
-  // Poll session data
-  clearInterval(S.dataPoll);
-  pollData();
-  S.dataPoll=setInterval(pollData,3000);
+function startPoll() {
+  async function poll() {
+    try {
+      const res = await fetch(API.rfidPoll(), { signal: AbortSignal.timeout(3000) });
+      if (res.status === 200) {
+        const d = await res.json().catch(() => ({}));
+        if (d.session_id) { onCardDetected(d.session_id, d.user_name || 'Kullanıcı'); return; }
+      }
+    } catch {}
+    _rfidHandle = setTimeout(poll, 2000);
+  }
+  _rfidHandle = setTimeout(poll, 700);
 }
 
-async function pollData(){
-  if(!S.sessionId)return;
-  try{
-    const r=await fetch(API.sessData(S.sessionId),{signal:AbortSignal.timeout(3000)});
-    if(!r.ok)return;
-    const d=await r.json();
-    renderChat(d.messages||[]);
-    renderSensors(d.sensors||{});
-    if(d.has_photo&&!S.photoUploaded){ S.photoUploaded=true; renderPhotoUploaded(); }
-  }catch{}
+function startRFID() {
+  stopRFID();
+  try {
+    const ws = new WebSocket(API.rfidWs());
+    ws.onopen    = () => { _rfidHandle = ws; };
+    ws.onmessage = e => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.event === 'card_detected') onCardDetected(d.session_id, d.user_name || 'Kullanıcı');
+      } catch {}
+    };
+    ws.onerror = () => { ws.close(); };
+    ws.onclose = () => { if (_rfidHandle === ws) { _rfidHandle = null; startPoll(); } };
+    _rfidHandle = ws;
+  } catch { startPoll(); }
 }
 
-/* ── Chat ── */
-function renderChat(msgs){
-  if(!msgs.length){ $('chat-empty').style.display=''; $('chat-msgs').style.display='none'; return; }
-  $('chat-empty').style.display='none'; $('chat-msgs').style.display='';
-  if(msgs.length===S.lastMsgCount)return;
-  S.lastMsgCount=msgs.length;
-  const container=$('chat-msgs');
-  container.innerHTML='';
-  msgs.forEach(m=>{
-    const row=document.createElement('div');
-    row.className=`msg-row ${m.role}`;
-    const ts=m.ts?new Date(m.ts*1000).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):'';
-    row.innerHTML=`<div class="msg-bubble"><div>${escHtml(m.text)}</div><div class="msg-time">${ts}</div></div>`;
-    container.appendChild(row);
-  });
-  container.scrollTop=container.scrollHeight;
-}
-function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-/* ── Sensors ── */
-function renderSensors(s){
-  if(!s||!s.ts){ $('sensors-empty').style.display=''; $('sensors-grid').style.display='none'; return; }
-  $('sensors-empty').style.display='none'; $('sensors-grid').style.display='';
-  const age=Math.round(Date.now()/1000-s.ts);
-  const ts=`Son güncelleme: ${age}s önce`;
-  const grid=$('sensors-grid');
-  grid.innerHTML=`
-    <div class="sensor-card">
-      <div class="sensor-label">Sıcaklık</div>
-      <div class="sensor-val">${s.temperature!=null?s.temperature:'—'}<span class="sensor-unit">°C</span></div>
-    </div>
-    <div class="sensor-card">
-      <div class="sensor-label">Nem</div>
-      <div class="sensor-val">${s.humidity!=null?s.humidity:'—'}<span class="sensor-unit">%</span></div>
-    </div>
-    <div class="sensor-card">
-      <div class="sensor-label">Duman (ADC)</div>
-      <div class="sensor-val">${s.smoke!=null&&s.smoke>=0?s.smoke:'—'}</div>
-      <div style="margin-top:6px">${smokeB(s.smoke)}</div>
-    </div>
-    <div class="sensor-card">
-      <div class="sensor-label">Işık (LDR)</div>
-      <div class="sensor-val">${s.ldr!=null&&s.ldr>=0?s.ldr:'—'}</div>
-    </div>
-    <div class="sensor-card">
-      <div class="sensor-label">Hareket (PIR)</div>
-      <div>${s.pir!=null?badge(s.pir===1,'Algılandı','Sessiz','warn','ok'):'<span class="sensor-badge muted">—</span>'}</div>
-    </div>
-    <div class="sensor-card">
-      <div class="sensor-label">Alev</div>
-      <div>${s.flame!=null?badge(s.flame===0,'YANGIN!','Güvenli','err','ok'):'<span class="sensor-badge muted">—</span>'}</div>
-    </div>
-    <div class="sensor-card wide">
-      <div class="sensor-label">Titreşim</div>
-      <div>${s.vib!=null?badge(s.vib===1,'Titreşim!','Normal','warn','ok'):'<span class="sensor-badge muted">—</span>'}</div>
-      <div class="sensor-ts">${ts}</div>
-    </div>`;
-}
-function badge(cond,trueLabel,falseLabel,trueClass,falseClass){
-  return `<span class="sensor-badge ${cond?trueClass:falseClass}">${cond?trueLabel:falseLabel}</span>`;
-}
-function smokeB(v){
-  if(v==null||v<0)return '<span class="sensor-badge muted">—</span>';
-  if(v<800)return '<span class="sensor-badge ok">Temiz</span>';
-  if(v<1500)return '<span class="sensor-badge warn">Orta</span>';
-  return '<span class="sensor-badge err">Tehlikeli</span>';
-}
-
-/* ── Photo tab ── */
-const cameraArea=$('camera-area'), fileInput=$('file-input'),
-      previewImg=$('preview-img'), previewOverlay=$('preview-overlay'),
-      camPlaceholder=$('cam-placeholder'), sendBtn=$('send-btn'),
-      uploadMsg=$('upload-msg'), progressTrack=$('progress-track'), progressFill=$('progress-fill');
-
-function resetPhoto(){
-  cameraArea.classList.remove('has-photo');
-  camPlaceholder.style.display=''; previewImg.style.display='none'; previewImg.src='';
-  previewOverlay.style.display='none'; uploadMsg.className='upload-msg hidden';
-  progressTrack.style.display='none'; progressFill.style.width='0%';
-  sendBtn.disabled=true; sendBtn.innerHTML='Fotoğrafı Gönder'; sendBtn.style.cssText='';
-  S.photoFile=null; fileInput.value='';
-}
-
-function renderPhotoUploaded(){
-  sendBtn.innerHTML='Gönderildi ✓'; sendBtn.style.background='#E8F5E9'; sendBtn.style.color='#2E7D32';
-  sendBtn.style.boxShadow='none'; sendBtn.style.border='1.5px solid rgba(46,125,50,0.25)'; sendBtn.disabled=true;
-  uploadMsg.className='upload-msg success';
-  uploadMsg.innerHTML='<svg width="16" height="16" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="rgba(46,125,50,0.12)" stroke="#2E7D32" stroke-width="1.3"/><path d="M5.5 9l2.5 2.5 4.5-4.5" stroke="#2E7D32" stroke-width="1.5" stroke-linecap="round"/></svg>Fotoğraf yüklendi ✓';
-}
-
-cameraArea.addEventListener('click',()=>fileInput.click());
-cameraArea.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')fileInput.click();});
-$('change-pill').addEventListener('click',e=>{e.stopPropagation();fileInput.click();});
-
-fileInput.addEventListener('change',e=>{
-  const file=e.target.files[0]; if(!file)return;
-  S.photoFile=file; S.photoUploaded=false;
-  const reader=new FileReader();
-  reader.onload=ev=>{ previewImg.src=ev.target.result; previewImg.style.display='block'; camPlaceholder.style.display='none'; previewOverlay.style.display='flex'; cameraArea.classList.add('has-photo'); };
-  reader.readAsDataURL(file);
-  sendBtn.disabled=false; sendBtn.innerHTML='Fotoğrafı Gönder'; sendBtn.style.cssText='';
-  uploadMsg.className='upload-msg hidden';
-});
-
-sendBtn.addEventListener('click',async()=>{
-  if(!S.photoFile)return;
-  sendBtn.disabled=true; sendBtn.innerHTML='<div class="spinner"></div> Yükleniyor…';
-  uploadMsg.className='upload-msg uploading'; uploadMsg.innerHTML='<div class="spinner dark"></div> Sunucuya yükleniyor…';
-  progressTrack.style.display='block'; progressFill.style.width='0%';
-  let pct=0; const tick=setInterval(()=>{ pct=Math.min(pct+Math.random()*18,88); progressFill.style.width=pct+'%'; },220);
-  try{
-    let ok=false;
-    try{ const fd=new FormData(); fd.append('photo',S.photoFile); const r=await fetch(API.upload(S.sessionId),{method:'POST',body:fd,signal:AbortSignal.timeout(12000)}); ok=r.ok; }
-    catch{ await delay(1800); ok=true; }
-    clearInterval(tick);
-    if(ok){
-      progressFill.style.width='100%'; S.photoUploaded=true; await delay(300);
-      progressTrack.style.display='none'; renderPhotoUploaded();
-      toast('Fotoğraf yüklendi');
+$('demo-card-btn').addEventListener('click', async () => {
+  try {
+    const res = await fetch(`${_proto}//${_host}/api/demo/session`, { method: 'POST', signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const d = await res.json();
+      onCardDetected(d.session_id, d.user_name);
+      return;
     }
-  }catch{
-    clearInterval(tick); progressTrack.style.display='none';
-    uploadMsg.className='upload-msg error'; uploadMsg.innerHTML='Yükleme başarısız. Tekrar deneyin.';
-    sendBtn.disabled=false; sendBtn.innerHTML='Tekrar Dene'; sendBtn.style.cssText='';
-    toast('Yükleme başarısız','✕');
+  } catch {}
+  /* Fallback: offline demo with fake ID */
+  onCardDetected('demo' + Date.now().toString(36), 'Demo Kullanıcı');
+});
+
+/* ── Screen 2: Upload ── */
+function resetUpload() {
+  cameraArea.classList.remove('has-photo');
+  camPlaceholder.style.display = '';
+  previewImg.style.display = 'none'; previewImg.src = '';
+  previewOverlay.style.display = 'none';
+  uploadMsg.className = 'msg-box hidden';
+  progressTrack.style.display = 'none';
+  progressFill.style.width = '0%';
+  pttNote.style.display = 'none';
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = 'Fotoğrafı Gönder';
+  sendBtn.style.cssText = '';
+  S.photoFile = null; S.photoUploaded = false;
+  fileInput.value = '';
+}
+
+cameraArea.addEventListener('click', () => fileInput.click());
+cameraArea.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+$('change-pill').addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  S.photoFile = file; S.photoUploaded = false;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    previewImg.src = ev.target.result;
+    previewImg.style.display = 'block';
+    camPlaceholder.style.display = 'none';
+    previewOverlay.style.display = 'flex';
+    cameraArea.classList.add('has-photo');
+  };
+  reader.readAsDataURL(file);
+  sendBtn.disabled = false;
+  sendBtn.innerHTML = 'Fotoğrafı Gönder';
+  sendBtn.style.cssText = '';
+  uploadMsg.className = 'msg-box hidden';
+  pttNote.style.display = 'none';
+});
+
+sendBtn.addEventListener('click', async () => {
+  if (!S.photoFile) return;
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<div class="spinner"></div> Yükleniyor…';
+  uploadMsg.className = 'msg-box uploading';
+  uploadMsg.innerHTML = '<div class="spinner light"></div><span>Sunucuya yükleniyor…</span>';
+  progressTrack.style.display = 'block';
+  progressFill.style.width = '0%';
+
+  let pct = 0;
+  const tick = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 18, 88);
+    progressFill.style.width = pct + '%';
+  }, 220);
+
+  try {
+    let ok = false;
+    try {
+      const fd = new FormData();
+      fd.append('photo', S.photoFile);
+      const res = await fetch(API.upload(S.sessionId), { method:'POST', body:fd, signal:AbortSignal.timeout(12000) });
+      ok = res.ok;
+    } catch { await delay(2000); ok = true; }
+
+    clearInterval(tick);
+    if (ok) {
+      progressFill.style.width = '100%';
+      S.photoUploaded = true;
+      await delay(350);
+      progressTrack.style.display = 'none';
+      uploadMsg.className = 'msg-box success';
+      uploadMsg.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" fill="rgba(46,125,50,0.12)" stroke="#2E7D32" stroke-width="1.3"/><path d="M5.5 9l2.5 2.5 4.5-4.5" stroke="#2E7D32" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Fotoğraf sunucuya yüklendi ✓`;
+      pttNote.style.display = 'flex';
+      sendBtn.innerHTML = 'Gönderildi ✓';
+      sendBtn.style.background = '#E8F5E9';
+      sendBtn.style.color = '#2E7D32';
+      sendBtn.style.boxShadow = 'none';
+      sendBtn.style.border = '1.5px solid rgba(46,125,50,0.25)';
+      showToast('Fotoğraf başarıyla yüklendi');
+      updateStatusScreen();
+      await delay(2600);
+      navigate('status');
+    }
+  } catch {
+    clearInterval(tick);
+    progressTrack.style.display = 'none';
+    uploadMsg.className = 'msg-box error';
+    uploadMsg.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="#C62828" stroke-width="1.3"/><path d="M6 6l6 6M12 6l-6 6" stroke="#C62828" stroke-width="1.5" stroke-linecap="round"/></svg>Yükleme başarısız. Tekrar deneyin.`;
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = 'Tekrar Dene';
+    sendBtn.style.cssText = '';
+    showToast('Yükleme başarısız', '✕');
   }
 });
 
-/* ── Logout ── */
-$('dash-logout-btn').addEventListener('click',()=>$('sheet-overlay').classList.add('open'));
-$('sheet-cancel').addEventListener('click',()=>$('sheet-overlay').classList.remove('open'));
-$('sheet-overlay').addEventListener('click',e=>{ if(e.target===$('sheet-overlay'))$('sheet-overlay').classList.remove('open'); });
-$('sheet-confirm').addEventListener('click',()=>{
-  $('sheet-overlay').classList.remove('open');
-  clearInterval(S.timerTick); clearInterval(S.dataPoll);
-  Object.assign(S,{sessionId:null,userName:null,sessionStart:null,timerTick:null,photoFile:null,photoUploaded:false,dataPoll:null,lastMsgCount:0});
-  $('dash-timer').textContent='00:00'; resetPhoto();
-  navigate('home',true); toast('Oturum kapatıldı','👋'); startRFID();
+$('upload-back').addEventListener('click', () => navigate('home', true));
+
+/* ── Screen 3: Status ── */
+function updateStatusScreen() {
+  $('stat-session-id').textContent = S.sessionId ? S.sessionId.slice(0,8).toUpperCase() : '——';
+  $('stat-user-name').textContent  = S.userName  || '—';
+  const badge = $('photo-badge');
+  if (S.photoUploaded) { badge.className = 'badge success'; badge.textContent = 'Yüklendi'; }
+  else                 { badge.className = 'badge warn';    badge.textContent = 'Bekleniyor'; }
+  clearInterval(S.timerTick);
+  const tick = () => {
+    if (!S.sessionStart) return;
+    const sec = Math.floor((Date.now() - S.sessionStart) / 1000);
+    $('session-timer').textContent =
+      String(Math.floor(sec / 60)).padStart(2,'0') + ':' + String(sec % 60).padStart(2,'0');
+  };
+  tick();
+  S.timerTick = setInterval(tick, 1000);
+}
+
+$('new-photo-btn').addEventListener('click', () => {
+  navigate('upload', true);
+  resetUpload();
+  $('display-name').textContent = S.userName;
+  $('display-session-id').textContent = S.sessionId ? S.sessionId.slice(0,6).toUpperCase() : '——';
+});
+
+$('logout-btn').addEventListener('click', () => sheetOverlay.classList.add('open'));
+$('sheet-cancel').addEventListener('click',  () => sheetOverlay.classList.remove('open'));
+sheetOverlay.addEventListener('click', e => { if (e.target === sheetOverlay) sheetOverlay.classList.remove('open'); });
+
+$('sheet-confirm').addEventListener('click', () => {
+  sheetOverlay.classList.remove('open');
+  clearInterval(S.timerTick);
+  Object.assign(S, { sessionId:null, userName:null, photoFile:null,
+                     photoUploaded:false, sessionStart:null, timerTick:null });
+  $('session-timer').textContent = '00:00';
+  navigate('home', true);
+  showToast('Oturum kapatıldı', '👋');
+  startRFID();
 });
 
 startRFID();
+
+async function syncActiveSession() {
+  try {
+    const res = await fetch(API.sessions(), { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      const data = await res.json();
+      const active = data.sessions && data.sessions.length > 0 ? data.sessions.find(s => s.rfid_scanned) : null;
+      
+      if (active) {
+        if (S.sessionId === active.session_id) {
+          // Zaten bu oturumdaysak fotoğraf durumunu check et
+          if (active.has_image && !S.photoUploaded && document.querySelector('.screen.active').id !== 'screen-status') {
+             S.photoUploaded = true;
+             updateStatusScreen();
+             navigate('status');
+          }
+          return;
+        }
+        
+        // Yeni / Açık bir oturum bulundu (arayüz sonradan açılmış)
+        stopRFID();
+        S.sessionId = active.session_id;
+        S.userName = active.username || 'Kullanıcı';
+        S.photoUploaded = active.has_image;
+        S.sessionStart = Date.now() - (active.age_sec * 1000);
+        
+        $('display-name').textContent = S.userName;
+        $('display-session-id').textContent = S.sessionId.slice(0, 6).toUpperCase();
+        
+        connDot.className = 'dot dot-connected';
+        connText.textContent = 'Giriş yapıldı';
+        
+        if (S.photoUploaded) {
+          updateStatusScreen();
+          navigate('status');
+        } else {
+          resetUpload();
+          navigate('upload');
+        }
+      } else {
+        // Sunucuda aktif RFID okutulmuş oturum yoksa ana ekrana dön
+        if (S.sessionId) {
+          S.sessionId = null;
+          navigate('home', true);
+          showToast('Cihaz bağlantısı koptu veya oturum kapandı', '🔌');
+          startRFID();
+        }
+      }
+    }
+  } catch(e) {}
+}
+
+setInterval(syncActiveSession, 3000);
+syncActiveSession();
 </script>
 </body>
 </html>

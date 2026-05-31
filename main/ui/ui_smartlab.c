@@ -48,7 +48,7 @@ void ui_smartlab_init(void)
 {
     s_screen = lv_scr_act();
     lv_obj_clean(s_screen);
-    set_bg(CLR_BG_DARK);
+    set_bg(CLR_BG_BLACK);
 
     // Büyük ikon/emoji (üst orta)
     s_icon_lbl = lv_label_create(s_screen);
@@ -60,7 +60,7 @@ void ui_smartlab_init(void)
     // Spinner (ikon ile aynı yerde, gerektiğinde görünür)
     s_anim_lbl = lv_label_create(s_screen);
     lv_obj_set_style_text_font(s_anim_lbl, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(s_anim_lbl, CLR_ACCENT, 0);
+    lv_obj_set_style_text_color(s_anim_lbl, CLR_CYAN, 0);
     lv_obj_align(s_anim_lbl, LV_ALIGN_CENTER, 0, -60);
     lv_label_set_text(s_anim_lbl, "");
     lv_obj_add_flag(s_anim_lbl, LV_OBJ_FLAG_HIDDEN);
@@ -78,7 +78,7 @@ void ui_smartlab_init(void)
     // Alt mesaj
     s_sub_lbl = lv_label_create(s_screen);
     lv_obj_set_style_text_font(s_sub_lbl, &lv_font_montserrat_16, 0);
-    lv_obj_set_style_text_color(s_sub_lbl, CLR_ACCENT, 0);
+    lv_obj_set_style_text_color(s_sub_lbl, CLR_CYAN, 0);
     lv_label_set_long_mode(s_sub_lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(s_sub_lbl, 220);
     lv_obj_set_style_text_align(s_sub_lbl, LV_TEXT_ALIGN_CENTER, 0);
