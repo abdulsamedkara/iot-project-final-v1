@@ -72,8 +72,8 @@ iot-project-final-v1/
 │   ├── rag.py                  ← ChromaDB RAG (PDF → chunk → embed → query)
 │   ├── requirements.txt        ← Tüm Python bağımlılıkları
 │   ├── tts_models/             ← en_US-lessac-medium.onnx + .onnx.json (indirildi)
-│   ├── chroma_db/              ← ChromaDB kalıcı depolama (otomatik oluşur)
-│   └── knowledge_base/         ← PDF'leri buraya koy (şu an boş)
+│   └── chroma_db/              ← ChromaDB kalıcı depolama (otomatik oluşur)
+├── rag_pdf/                    ← PDF dokümanlar (multimetre, ESP32-S3, ILI9341)
 ├── web_ui/
 │   └── index.html              ← Mobil web UI (Claude Design export)
 ├── iot-web/
@@ -162,23 +162,22 @@ ollama serve   # her server başlatmadan önce çalışmalı
 
 ---
 
-### ✅ FAZA 4 — RAG + Fotoğraf Yükleme (KOD TAMAM, YAPILANDIRMA GEREKİYOR)
+### ✅ FAZA 4 — RAG + Fotoğraf Yükleme (TAMAM)
 
 **RAG (`server/rag.py`):**
 - ChromaDB PersistentClient, `paraphrase-multilingual-MiniLM-L12-v2` embeddings
-- PDF'leri `rag_pdf/` klasöründen okur, chunk'lar, indeksler
+- `rag_pdf/` klasöründen okur: multimetre + ESP32-S3 + ILI9341 → **1607 chunk** indekslendi
 - Sunucu başlarken otomatik indeksleme yapar
-
-**⚠️ Şu an RAG çalışmıyor:** Keras 3 uyumsuzluk hatası.
-```
-Fix: pip install tf-keras
-```
-Sonra `rag_pdf/` klasörüne lab PDF'lerini koy, sunucuyu yeniden başlat.
+- `tf-keras` kuruldu, Keras 3 sorunu çözüldü
 
 **Fotoğraf yükleme:**
 - `POST /api/session/{id}/photo` — web UI'dan gelen fotoğraf
 - `POST /upload/{id}` — eski alias
+- Upload sırasında **max 800px JPEG %75** sıkıştırma (LLM hız için)
 - Fotoğraf base64 olarak session'a bağlanır, LLM'e gönderilir (vision)
+- LLM timeout: text=60s, vision=120s
+
+**Yeni PDF eklemek için:** `rag_pdf/` klasörüne at, server'ı restart et.
 
 ---
 
