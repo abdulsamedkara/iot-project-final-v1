@@ -317,6 +317,49 @@ static void vib_task(void *arg)
     }
 }
 
+// ─── Sensör Broadcast Görevi ──────────────────────────────────────────────────
+// Her 5 saniyede sensör verilerini JSON olarak server'a gönderir
+static void sensor_broadcast_task(void *arg)
+{
+    static const char *TAG_SB = "sensor_bcast";
+    // Warmup için bekle
+    vTaskDelay(pdMS_TO_TICKS(35000));
+
+    while (1) {
+        if (!ws_client_is_connected()) {
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
+
+        int smoke = smoke_sensor_read_avg();
+        int ldr   = ldr_sensor_read_avg();
+        int pir   = gpio_get_level(PIR_GPIO);
+        int flame = gpio_get_level(FLAME_GPIO);
+        int vib   = gpio_get_level(VIB_GPIO);
+
+        dht11_reading_t dht = {0};
+        dht11_read(DHT11_GPIO, &dht);
+
+        char json[256];
+        snprintf(json, sizeof(json),
+            "{\"type\":\"sensors\","
+            "\"temperature\":%d,\"humidity\":%d,"
+            "\"smoke\":%d,\"ldr\":%d,"
+            "\"pir\":%d,\"flame\":%d,\"vib\":%d}",
+            dht.temperature, dht.humidity,
+            smoke  >= 0 ? smoke  : -1,
+            ldr    >= 0 ? ldr    : -1,
+            pir, flame, vib);
+
+        esp_err_t err = ws_client_send_text(json);
+        if (err == ESP_OK) {
+            ESP_LOGD(TAG_SB, "Sensor gonderildi");
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
 // ─── WebSocket callback'leri ──────────────────────────────────────────────────
 static volatile bool    s_rsp_ready = false;
 static const uint8_t   *s_rsp_pcm   = NULL;
@@ -409,6 +452,9 @@ void app_main(void)
 
     // 7g. Titreşim Sensörü
     xTaskCreatePinnedToCore(vib_task, "vib", 4096, NULL, 3, NULL, 0);
+
+    // 7h. Sensör broadcast (web UI için 5s'de bir JSON gönderir)
+    xTaskCreatePinnedToCore(sensor_broadcast_task, "sensor_bc", 4096, NULL, 2, NULL, 0);
 
     // 8. WebSocket → session key al
     display_switch(SCREEN_IDLE, "Sunucuya baglaniliyor...");

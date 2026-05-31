@@ -123,7 +123,21 @@ async def ws_endpoint(ws: WebSocket):
                     data = json.loads(message["text"])
                     msg_type = data.get("type", "")
 
-                    if msg_type == "rfid":
+                    if msg_type == "sensors":
+                        current_sess = store.get(sess.session_id)
+                        if current_sess:
+                            current_sess.sensors = {
+                                "temperature": data.get("temperature"),
+                                "humidity":    data.get("humidity"),
+                                "smoke":       data.get("smoke"),
+                                "ldr":         data.get("ldr"),
+                                "pir":         data.get("pir"),
+                                "flame":       data.get("flame"),
+                                "vib":         data.get("vib"),
+                                "ts":          time.time(),
+                            }
+
+                    elif msg_type == "rfid":
                         uid = data.get("uid", "").upper()
                         username = store.set_user(sess.session_id, uid)
                         log.info(f"[{sess.session_id[:8]}] RFID: {uid} → {username}")
@@ -200,6 +214,15 @@ async def ws_endpoint(ws: WebSocket):
                     rag_context=rag_ctx,
                 )
                 log.info(f"[{sess.session_id[:8]}] LLM ({time.time()-t2:.2f}s): '{answer[:60]}'")
+
+                # Chat geçmişine kaydet
+                current_sess2 = store.get(sess.session_id)
+                if current_sess2:
+                    now_ts = time.time()
+                    current_sess2.messages.append({"role": "user",      "text": transcript, "ts": now_ts})
+                    current_sess2.messages.append({"role": "assistant", "text": answer,     "ts": now_ts})
+                    if len(current_sess2.messages) > 40:
+                        current_sess2.messages = current_sess2.messages[-40:]
 
                 t3 = time.time()
                 audio_pcm = await asyncio.get_event_loop().run_in_executor(
@@ -392,6 +415,20 @@ async def smoke_alert(req: Request):
         encrypted = crypto.encrypt(current_sess.key_bytes, audio_pcm)
         return Response(content=encrypted, media_type="application/octet-stream")
     return Response(content=audio_pcm, media_type="application/octet-stream")
+
+
+# ─── Session data (chat + sensors) ──────────────────────────────────────────
+@app.get("/api/session/{session_id}/data")
+async def session_data(session_id: str):
+    sess = store.get(session_id)
+    if not sess:
+        return JSONResponse({"error": "Session bulunamadı"}, status_code=404)
+    return {
+        "messages":  sess.messages,
+        "sensors":   sess.sensors,
+        "has_photo": sess.image_b64 is not None,
+        "username":  sess.username,
+    }
 
 
 # ─── Sessions list ────────────────────────────────────────────────────────────

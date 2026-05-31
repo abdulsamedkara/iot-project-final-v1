@@ -272,6 +272,15 @@ esp_err_t ws_client_send_audio(const uint8_t *iv,
     return ESP_OK;
 }
 
+esp_err_t ws_client_send_text(const char *json)
+{
+    if (!ws_client_is_connected()) return ESP_ERR_INVALID_STATE;
+    int n = (int)strlen(json);
+    return esp_websocket_client_send_text(s_client, json, n,
+                                           pdMS_TO_TICKS(3000)) >= 0
+        ? ESP_OK : ESP_FAIL;
+}
+
 const uint8_t *ws_client_get_session_key(void)
 {
     return s_has_session ? s_session_key : NULL;
