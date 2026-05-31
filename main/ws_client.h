@@ -67,6 +67,11 @@ bool ws_client_is_connected(void);
 bool ws_client_has_session(void);
 
 /**
+ * @brief  Ham JSON text frame gönderir (sensör verisi vb.)
+ */
+esp_err_t ws_client_send_text(const char *json);
+
+/**
  * @brief  WebSocket bağlantısını kapatır.
  */
 void ws_client_deinit(void);

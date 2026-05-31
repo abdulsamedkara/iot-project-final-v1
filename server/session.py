@@ -31,7 +31,9 @@ class Session:
     created_at: float = field(default_factory=time.time)
     username: str = "Misafir"
     rfid_uid: Optional[str] = None
-    image_b64: Optional[str] = None   # Faza 4: mobil web UI'dan yüklenen fotoğraf
+    image_b64: Optional[str] = None
+    messages: list = field(default_factory=list)  # [{role,text,ts}]
+    sensors: dict = field(default_factory=dict)   # son sensör okuması
 
     @property
     def key_b64(self) -> str:
