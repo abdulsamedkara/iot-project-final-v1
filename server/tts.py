@@ -39,16 +39,10 @@ def synthesize(text: str) -> bytes:
 
     try:
         voice = _get_voice()
-        buf = io.BytesIO()
-        with wave.open(buf, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(TTS_SAMPLE_RATE)
-            voice.synthesize(text, wf)
-
-        wav_bytes = buf.getvalue()
-        # WAV header'ını atla (44 byte) → ham PCM döndür
-        pcm = wav_bytes[44:]
+        chunks = []
+        for chunk in voice.synthesize_stream_raw(text):
+            chunks.append(chunk)
+        pcm = b"".join(chunks)
         log.info(f"TTS: {len(text)} kar → {len(pcm)} byte PCM")
         return pcm
 
