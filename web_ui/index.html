@@ -518,7 +518,8 @@ async function pollChat(){
     if(!r.ok)return;
     const d=await r.json();
     renderChat(d.messages||[]);
-    if(d.has_photo&&!S.photoUploaded){ S.photoUploaded=true; renderPhotoUploaded(); }
+    // Sadece yeni fotoğraf seçilmemişse renderPhotoUploaded çağır
+    if(d.has_photo&&!S.photoUploaded&&!S.photoFile){ S.photoUploaded=true; renderPhotoUploaded(); }
   }catch{}
 }
 
@@ -650,7 +651,7 @@ sendBtn.addEventListener('click',async()=>{
   try{
     let ok=false;
     try{ const fd=new FormData(); fd.append('photo',S.photoFile); const r=await fetch(API.upload(S.sessionId),{method:'POST',body:fd,signal:AbortSignal.timeout(12000)}); ok=r.ok; }
-    catch{ await delay(1800); ok=true; }
+    catch(e){ ok=false; }
     clearInterval(tick);
     if(ok){
       progressFill.style.width='100%'; S.photoUploaded=true; await delay(300);
