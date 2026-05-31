@@ -441,6 +441,7 @@ async function onCardDetected(sessionId, userName){
 
   S.sessionId=sessionId; S.userName=userName;
   S.sessionStart=Date.now(); S.photoFile=null; S.photoUploaded=false; S.lastMsgCount=0;
+  sessionStorage.setItem('sl_session',JSON.stringify({sessionId,userName,sessionStart:S.sessionStart}));
 
   $('dash-user-name').textContent=userName;
   $('photo-user-name').textContent=userName;
@@ -756,11 +757,35 @@ $('sheet-confirm').addEventListener('click',()=>{
   clearInterval(S.timerTick); clearInterval(S.dataPoll);
   if(_sensorWs){try{_sensorWs.close();}catch{}_sensorWs=null;}
   Object.assign(S,{sessionId:null,userName:null,sessionStart:null,timerTick:null,photoFile:null,photoUploaded:false,dataPoll:null,lastMsgCount:0});
+  sessionStorage.removeItem('sl_session');
   $('dash-timer').textContent='00:00'; resetPhoto();
   navigate('home',true); toast('Oturum kapatıldı','👋'); startRFID();
 });
 
-startRFID();
+// Sayfa yenilenince session'ı geri yükle
+(async () => {
+  try {
+    const saved = sessionStorage.getItem('sl_session');
+    if (saved) {
+      const {sessionId, userName, sessionStart} = JSON.parse(saved);
+      const r = await fetch(`${_proto}//${_host}/api/session/${sessionId}/data`,
+                            {signal: AbortSignal.timeout(3000)});
+      if (r.ok) {
+        S.sessionId=sessionId; S.userName=userName;
+        S.sessionStart=sessionStart; S.photoFile=null; S.photoUploaded=false; S.lastMsgCount=0;
+        $('dash-user-name').textContent=userName;
+        $('photo-user-name').textContent=userName;
+        $('photo-session-id').textContent=sessionId.slice(0,8).toUpperCase();
+        navigate('dash');
+        startDashboard();
+        return;
+      } else {
+        sessionStorage.removeItem('sl_session');
+      }
+    }
+  } catch {}
+  startRFID();
+})();
 </script>
 </body>
 </html>
