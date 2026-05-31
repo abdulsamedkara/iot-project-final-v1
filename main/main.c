@@ -178,6 +178,10 @@ static void smoke_task(void *arg)
     }
 }
 
+// ─── DHT11 shared data (dht11_task yazar, sensor_broadcast_task okur) ────────
+static volatile int s_dht_temp = 0;
+static volatile int s_dht_hum  = 0;
+
 // ─── DHT11 Görevi ─────────────────────────────────────────────────────────────
 static void dht11_task(void *arg)
 {
@@ -189,6 +193,8 @@ static void dht11_task(void *arg)
     while (1) {
         esp_err_t res = dht11_read(DHT11_GPIO, &dht_data);
         if (res == ESP_OK) {
+            s_dht_temp = dht_data.temperature;
+            s_dht_hum  = dht_data.humidity;
             ESP_LOGI(TAG3, "Sicaklik: %dC, Nem: %%%d", dht_data.temperature, dht_data.humidity);
         } else {
             ESP_LOGW(TAG3, "DHT11 okuma basarisiz (hata: %d)", res);
@@ -351,11 +357,9 @@ static void sensor_broadcast_task(void *arg)
 
             int smoke = smoke_sensor_read_avg();
             int ldr   = ldr_sensor_read_avg();
-            dht11_reading_t dht = {0};
-            dht11_read(DHT11_GPIO, &dht);
-
-            s_temp  = dht.temperature;
-            s_hum   = dht.humidity;
+            // dht11_read çağırma — vTaskSuspendAll kullanır, RFID polling bozar
+            s_temp  = s_dht_temp;
+            s_hum   = s_dht_hum;
             s_smoke = (smoke >= 0) ? smoke : -1;
             s_ldr   = (ldr   >= 0) ? ldr   : -1;
         }
@@ -501,6 +505,7 @@ void app_main(void)
     // ─── Ana Döngü ────────────────────────────────────────────────────────────
     rfid_card_t last_card  = {0};
     bool        session_ok = false;
+    int         rfid_fail_count = 0;
 
     while (1) {
 
@@ -508,6 +513,7 @@ void app_main(void)
         if (!session_ok) {
             rfid_card_t card;
             if (rfid_poll(&card)) {
+                rfid_fail_count = 0;
                 if (!rfid_uid_equal(&card, &last_card)) {
                     last_card = card;
                     char uid[32];
@@ -528,6 +534,13 @@ void app_main(void)
 
                     session_ok = true;
                     display_switch(SCREEN_READY, NULL);
+                }
+            } else {
+                // Başarısız okuma — 5 art arda hata sonrası MFRC522 recovery
+                if (++rfid_fail_count >= 5) {
+                    rfid_fail_count = 0;
+                    rfid_init();  // Soft reset + antenna yeniden aç
+                    ESP_LOGW(TAG, "RFID recovery yapildi");
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(200));
