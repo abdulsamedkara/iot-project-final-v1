@@ -324,6 +324,11 @@ static void vib_task(void *arg)
 }
 
 // ─── Sensör Broadcast Görevi ──────────────────────────────────────────────────
+
+// Fan modu: 0=manual, 1=auto_temp
+static volatile int  s_fan_mode  = 1;   // başlangıçta auto
+static volatile int  s_fan_speed = 0;   // 0-100, manuel mod için
+
 // Fast sensörler (vib/pir/flame): 50ms'de bir state değişimi kontrol et → anında gönder
 // Yavaş sensörler (sıcaklık/nem/duman/ldr): 1s'de bir güncelle
 static void sensor_broadcast_task(void *arg)
@@ -412,10 +417,6 @@ static void on_audio(const uint8_t *pcm, size_t len)
 
 // Kullanıcı adını buraya yaz (RFID yanıtından)
 static char s_username[64] = {0};
-
-// Fan modu: 0=manual, 1=auto_temp
-static volatile int  s_fan_mode  = 1;   // başlangıçta auto
-static volatile int  s_fan_speed = 0;   // 0-100, manuel mod için
 
 static void on_text(const char *json, size_t len)
 {
