@@ -754,10 +754,13 @@ $('sheet-cancel').addEventListener('click',()=>$('sheet-overlay').classList.remo
 $('sheet-overlay').addEventListener('click',e=>{ if(e.target===$('sheet-overlay'))$('sheet-overlay').classList.remove('open'); });
 $('sheet-confirm').addEventListener('click',()=>{
   $('sheet-overlay').classList.remove('open');
+  const logoutSid=S.sessionId;
   clearInterval(S.timerTick); clearInterval(S.dataPoll);
   if(_sensorWs){try{_sensorWs.close();}catch{}_sensorWs=null;}
   Object.assign(S,{sessionId:null,userName:null,sessionStart:null,timerTick:null,photoFile:null,photoUploaded:false,dataPoll:null,lastMsgCount:0});
   sessionStorage.removeItem('sl_session');
+  // ESP32'ye logout komutu gönder
+  if(logoutSid) fetch(`${_proto}//${_host}/api/session/${logoutSid}/logout`,{method:'POST'}).catch(()=>{});
   $('dash-timer').textContent='00:00'; resetPhoto();
   navigate('home',true); toast('Oturum kapatıldı','👋'); startRFID();
 });
