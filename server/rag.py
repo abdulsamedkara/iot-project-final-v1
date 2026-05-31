@@ -18,7 +18,7 @@ from typing import Optional
 
 log = logging.getLogger("rag")
 
-KB_DIR    = Path(__file__).parent / "knowledge_base"
+KB_DIR    = Path(__file__).parent.parent / "rag_pdf"
 CHROMA_DIR = Path(__file__).parent / "chroma_db"
 COLLECTION = "lab_docs"
 CHUNK_SIZE  = 400   # karakter

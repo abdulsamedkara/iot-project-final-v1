@@ -287,14 +287,42 @@ async def upload_photo_alias(session_id: str, photo: UploadFile = File(...)):
     return await _handle_upload(session_id, photo)
 
 
+def _resize_image(data: bytes, max_px: int = 800, quality: int = 75) -> bytes:
+    """Resize image to max_px on longest side, re-encode as JPEG to reduce size."""
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(data))
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        w, h = img.size
+        if max(w, h) > max_px:
+            scale = max_px / max(w, h)
+            img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        resized = buf.getvalue()
+        log.info(f"Image resize: {len(data)//1024}KB → {len(resized)//1024}KB "
+                 f"({img.size[0]}×{img.size[1]})")
+        return resized
+    except Exception as e:
+        log.warning(f"Image resize failed ({e}), using original")
+        return data
+
+
 async def _handle_upload(session_id: str, upload: UploadFile) -> JSONResponse | Response:
     sess = store.get(session_id)
     if not sess:
         return JSONResponse({"error": "Session bulunamadı"}, status_code=404)
 
     content = await upload.read()
-    if len(content) > 5 * 1024 * 1024:
-        return JSONResponse({"error": "Dosya çok büyük (max 5MB)"}, status_code=413)
+    if len(content) > 20 * 1024 * 1024:
+        return JSONResponse({"error": "Dosya çok büyük (max 20MB)"}, status_code=413)
+
+    # Resize before storing — large images make vision LLM very slow
+    content = await asyncio.get_event_loop().run_in_executor(
+        None, _resize_image, content
+    )
 
     image_b64 = base64.b64encode(content).decode()
     ok = store.set_image(session_id, image_b64)

@@ -9,9 +9,10 @@ import httpx
 
 log = logging.getLogger("llm")
 
-OLLAMA_URL  = "http://localhost:11434/api/chat"
-MODEL_NAME  = "gemma3:4b"
-TIMEOUT_SEC = 30.0
+OLLAMA_URL         = "http://localhost:11434/api/chat"
+MODEL_NAME         = "gemma3:4b"
+TIMEOUT_SEC        = 60.0   # text-only
+TIMEOUT_VISION_SEC = 120.0  # with image
 
 SYSTEM_PROMPT = (
     "You are SmartLab Assistant, an AI assistant for an engineering lab. "
@@ -56,8 +57,9 @@ async def generate(
         ],
     }
 
+    timeout = TIMEOUT_VISION_SEC if image_b64 else TIMEOUT_SEC
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT_SEC) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(OLLAMA_URL, json=payload)
             resp.raise_for_status()
             answer = resp.json()["message"]["content"].strip()

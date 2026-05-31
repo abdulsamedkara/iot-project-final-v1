@@ -19,19 +19,26 @@
 
 | Bileşen | Arayüz | Pinler |
 |---|---|---|
-| ILI9341 TFT (240×320) | SPI | MOSI=11, MISO=13, CLK=12, CS=10, DC=9, RST=8, BL=46 |
-| MFRC522 RFID | SPI (aynı bus) | CS=7, RST=6 |
-| INMP441 Mikrofon | I2S | WS=42, SCK=41, SD=40 |
-| MAX98357A Hoparlör | I2S | WS=39, BCK=38, DIN=37 |
-| MQ135 Duman Sensörü | ADC | AOUT → GPIO3 (ADC1_CH2) |
+| ILI9341 TFT (240×320) | SPI | MOSI=11, MISO=13, CLK=12, CS=9, DC=8, RST=7, BL=46 |
+| MFRC522 RFID | SPI (aynı bus) | CS=10, RST=yazılımsal (-1) |
+| INMP441 Mikrofon | I2S | SCK=42, WS=2, SD=41 |
+| MAX98357A Hoparlör | I2S | BCK=16, WS=17, DIN=15 |
+| MQ135 Duman Sensörü | ADC | AOUT → GPIO4 (ADC1_CH3) |
 | L298N Fan Sürücü | LEDC PWM | IN4=GPIO21, ENA=GPIO18 |
 | PTT Butonu | GPIO | GPIO0 (BOOT butonu — karta lehimli) |
+| DHT11 Sıcaklık/Nem | 1-Wire | DATA=GPIO47 |
+| LDR Işık Sensörü | ADC | AOUT → GPIO6 (ADC1_CH5) |
+| PIR Hareket Sensörü | GPIO | OUT=GPIO5 |
+| Alev Sensörü | GPIO | DO=GPIO48 (LOW=alev algılandı) |
+| SW-420 Titreşim | GPIO | DO=GPIO1 |
 
 **Kritik notlar:**
-- ILI9341 ve MFRC522 **aynı SPI2 bus** paylaşır, CS pinleri farklı (10 vs 7)
-- MQ135: sadece **AOUT** pini bağla → GPIO3. DOUT kullanma.
+- ILI9341 ve MFRC522 **aynı SPI2 bus** paylaşır, CS pinleri farklı (CS=9 vs CS=10)
+- MQ135: sadece **AOUT** pini bağla → **GPIO4** (GPIO3 strapping pin, kullanma!)
 - L298N: ENA=GPIO18 (PWM hız), IN4=GPIO21 (yön), IN3'ü GND'ye çek
 - GPIO0 = BOOT butonu = PTT. Flash sırasında basılı tutma.
+- RFID RST = yazılımsal reset (fiziksel RST pini bağlamaya gerek yok, -1)
+- DHT11 okuma sırasında `vTaskSuspendAll()` çağrılır (~7ms) — WiFi'yi kısa süre durdurur, normaldir
 
 ---
 
@@ -49,8 +56,9 @@ iot-project-final-v1/
 │   ├── rfid.c / rfid.h         ← MFRC522 bare-metal SPI driver
 │   ├── i2s_mic.c / i2s_mic.h  ← INMP441 mikrofon
 │   ├── i2s_player.c / i2s_player.h ← MAX98357A hoparlör
-│   ├── smoke_sensor.c / smoke_sensor.h  ← MQ135 ADC okuma
+│   ├── smoke_sensor.c / smoke_sensor.h  ← MQ135 ADC + LDR ADC (ldr_sensor_init/read_avg)
 │   ├── fan_control.c / fan_control.h    ← L298N LEDC PWM
+│   ├── dht11.c / dht11.h               ← DHT11 1-Wire sürücü (vTaskSuspendAll tabanlı)
 │   └── ui/
 │       ├── display.c / display.h        ← LVGL 8.3 + ILI9341 init
 │       └── ui_smartlab.c / ui_smartlab.h ← 8 durumlu TFT state machine
@@ -129,18 +137,26 @@ ollama serve   # her server başlatmadan önce çalışmalı
 
 ---
 
-### ✅ FAZA 3 — Duman Algılama ve Fan Kontrol (TAMAM)
+### ✅ FAZA 3 — Sensörler ve Fan Kontrol (TAMAM)
 
-`smoke_sensor.c/h` + `fan_control.c/h` firmware'de mevcut.
+`smoke_sensor.c/h` + `fan_control.c/h` + `dht11.c/h` firmware'de mevcut.
 
-**Eşik değerleri (config.h'ta):**
+**MQ135 Duman eşik değerleri (config.h):**
 | ADC Değeri | Durum | Fan |
 |---|---|---|
 | < 800 | Temiz hava | Kapalı |
 | 800 – 1500 | Orta seviye | %50 PWM |
 | > 1500 | Tehlikeli | %100 PWM + UI_SMOKE_ALERT |
 
-**FreeRTOS task:** `smoke_task` — Core 0, 500ms periyot, 30s warmup, 3 ardışık okuma debounce.
+**FreeRTOS task'ları (hepsi Core 0):**
+| Task | Periyot | Notlar |
+|---|---|---|
+| `smoke_task` | 500ms | 30s warmup, 3 okuma debounce |
+| `dht11_task` | 2000ms | `vTaskSuspendAll` ~7ms kullanır |
+| `ldr_task` | 1000ms | ADC ortalama okuma |
+| `pir_task` | 500ms | Durum değişiminde log |
+| `flame_task` | 500ms | LOW = alev algılandı |
+| `vib_task` | 100ms | SW-420, anlık titreşim |
 
 **Server:** `POST /smoke_alert` endpoint mevcut — İngilizce sesli uyarı üretir.
 
@@ -150,14 +166,14 @@ ollama serve   # her server başlatmadan önce çalışmalı
 
 **RAG (`server/rag.py`):**
 - ChromaDB PersistentClient, `paraphrase-multilingual-MiniLM-L12-v2` embeddings
-- PDF'leri `server/knowledge_base/` klasöründen okur, chunk'lar, indeksler
+- PDF'leri `rag_pdf/` klasöründen okur, chunk'lar, indeksler
 - Sunucu başlarken otomatik indeksleme yapar
 
 **⚠️ Şu an RAG çalışmıyor:** Keras 3 uyumsuzluk hatası.
 ```
 Fix: pip install tf-keras
 ```
-Sonra `server/knowledge_base/` klasörüne lab PDF'lerini koy, sunucuyu yeniden başlat.
+Sonra `rag_pdf/` klasörüne lab PDF'lerini koy, sunucuyu yeniden başlat.
 
 **Fotoğraf yükleme:**
 - `POST /api/session/{id}/photo` — web UI'dan gelen fotoğraf
@@ -358,7 +374,7 @@ idf.py -p COM3 flash monitor   # COM numarasını Device Manager > Ports'tan bak
 | `idf.py flash` | Firmware ESP32'ye yükle |
 | `ollama pull gemma3:4b` | LLM modelini indir |
 | `pip install tf-keras` | RAG embedding fix |
-| PDF ekle | `server/knowledge_base/` klasörüne lab dokümanları |
+| PDF ekle | `rag_pdf/` klasörüne lab dokümanları |
 | RFID tablosuna kart ekle | `session.py` > `RFID_USERS` dict |
 | End-to-end test | Yukarıdaki test senaryosunu çalıştır |
 
@@ -378,7 +394,7 @@ dependencies:
 
 ```cmake
 idf_component_register(
-    SRCS "main.c" "i2s_mic.c" "i2s_player.c" "crypto.c" "ws_client.c"
+    SRCS "main.c" "dht11.c" "i2s_mic.c" "i2s_player.c" "crypto.c" "ws_client.c"
          "rfid.c" "smoke_sensor.c" "fan_control.c"
          "ui/display.c" "ui/ui_smartlab.c"
     INCLUDE_DIRS "." "ui"
