@@ -5,16 +5,15 @@
 #include "lvgl.h"
 #include <string.h>
 
-// ─── Renk paleti ──────────────────────────────────────────────────────────────
-#define CLR_BG_DARK     lv_color_hex(0x0A0A0A)  // Koyu arka plan
-#define CLR_BG_GREEN    lv_color_hex(0x1B5E20)  // Hoşgeldin
-#define CLR_BG_RED      lv_color_hex(0xB71C1C)  // Hata / duman
-#define CLR_BG_ORANGE   lv_color_hex(0xBF360C)  // Kayıt
-#define CLR_BG_BLUE     lv_color_hex(0x0D47A1)  // Normal
-#define CLR_WHITE       lv_color_hex(0xFFFFFF)
-#define CLR_YELLOW      lv_color_hex(0xFFD600)
-#define CLR_ACCENT      lv_color_hex(0x29B6F6)  // Açık mavi
-#define CLR_LIGHT_GREY  lv_color_hex(0xB0BEC5)  // Alt text için — mavi bg'de okunabilir
+// ─── Renk paleti — siyah arka plan, yüksek kontrast ──────────────────────────
+#define CLR_BG_BLACK    lv_color_hex(0x000000)  // Tüm durumlar
+#define CLR_WHITE       lv_color_hex(0xFFFFFF)  // Başlık
+#define CLR_GREY        lv_color_hex(0x9E9E9E)  // Alt text
+#define CLR_CYAN        lv_color_hex(0x00E5FF)  // Hazır / konuşuyor
+#define CLR_GREEN       lv_color_hex(0x69F0AE)  // Hoşgeldin
+#define CLR_YELLOW      lv_color_hex(0xFFEA00)  // Kayıt / ikon
+#define CLR_RED         lv_color_hex(0xFF1744)  // Hata / duman
+#define CLR_ORANGE      lv_color_hex(0xFF6D00)  // İşleniyor
 
 // ─── LVGL nesneleri ──────────────────────────────────────────────────────────
 static lv_obj_t *s_screen    = NULL;  // Tek aktif ekran
@@ -36,10 +35,11 @@ static void spinner_cb(lv_timer_t *t)
     }
 }
 
-// ─── Yardımcı: ekranı belirli bir renge boyar ─────────────────────────────────
+// ─── Yardımcı: arka plan her zaman siyah ─────────────────────────────────────
 static void set_bg(lv_color_t color)
 {
-    lv_obj_set_style_bg_color(s_screen, color, 0);
+    (void)color;  // artık kullanılmıyor — tüm arka planlar siyah
+    lv_obj_set_style_bg_color(s_screen, CLR_BG_BLACK, 0);
     lv_obj_set_style_bg_opa(s_screen, LV_OPA_COVER, 0);
 }
 
@@ -100,10 +100,10 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
     switch (id) {
     // ── IDLE ────────────────────────────────────────────────────────────────
     case SCREEN_IDLE:
-        set_bg(CLR_BG_DARK);
-        lv_obj_set_style_text_color(s_icon_lbl,  CLR_YELLOW,     0);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,      0);
-        lv_obj_set_style_text_color(s_sub_lbl,   CLR_LIGHT_GREY, 0);
+        set_bg(CLR_BG_BLACK);
+        lv_obj_set_style_text_color(s_icon_lbl,  CLR_CYAN,  0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE, 0);
+        lv_obj_set_style_text_color(s_sub_lbl,   CLR_GREY,  0);
         lv_label_set_text(s_icon_lbl,  LV_SYMBOL_WIFI);
         lv_label_set_text(s_title_lbl, "SmartLab Asistan");
         lv_label_set_text(s_sub_lbl,   msg ? msg : "RFID kartinizi okutun");
@@ -111,10 +111,10 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
 
     // ── RFID_READ ────────────────────────────────────────────────────────────
     case SCREEN_RFID_READ:
-        set_bg(CLR_BG_GREEN);
-        lv_obj_set_style_text_color(s_icon_lbl,  CLR_YELLOW, 0);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,  0);
-        lv_obj_set_style_text_color(s_sub_lbl,   CLR_WHITE,  0);
+        set_bg(CLR_BG_BLACK);
+        lv_obj_set_style_text_color(s_icon_lbl,  CLR_GREEN, 0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE, 0);
+        lv_obj_set_style_text_color(s_sub_lbl,   CLR_GREY,  0);
         lv_label_set_text(s_icon_lbl,  LV_SYMBOL_OK);
         lv_label_set_text(s_title_lbl, msg ? msg : "Hosgeldiniz!");
         lv_label_set_text(s_sub_lbl,   "Oturum baslatiliyor...");
@@ -122,10 +122,10 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
 
     // ── READY ────────────────────────────────────────────────────────────────
     case SCREEN_READY:
-        set_bg(CLR_BG_BLUE);
-        lv_obj_set_style_text_color(s_icon_lbl,  CLR_WHITE,      0);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,      0);
-        lv_obj_set_style_text_color(s_sub_lbl,   CLR_LIGHT_GREY, 0);
+        set_bg(CLR_BG_BLACK);
+        lv_obj_set_style_text_color(s_icon_lbl,  CLR_CYAN,  0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE, 0);
+        lv_obj_set_style_text_color(s_sub_lbl,   CLR_GREY,  0);
         lv_label_set_text(s_icon_lbl,  LV_SYMBOL_AUDIO);
         lv_label_set_text(s_title_lbl, msg ? msg : "Hazir");
         lv_label_set_text(s_sub_lbl,   "PTT'ye basarak sorun");
@@ -133,10 +133,10 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
 
     // ── RECORDING ────────────────────────────────────────────────────────────
     case SCREEN_RECORDING:
-        set_bg(CLR_BG_ORANGE);
-        lv_obj_set_style_text_color(s_icon_lbl,  CLR_WHITE,  0);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,  0);
-        lv_obj_set_style_text_color(s_sub_lbl,   CLR_YELLOW, 0);
+        set_bg(CLR_BG_BLACK);
+        lv_obj_set_style_text_color(s_icon_lbl,  CLR_YELLOW, 0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_YELLOW, 0);
+        lv_obj_set_style_text_color(s_sub_lbl,   CLR_GREY,   0);
         lv_label_set_text(s_icon_lbl,  LV_SYMBOL_AUDIO);
         lv_label_set_text(s_title_lbl, "Dinliyorum...");
         lv_label_set_text(s_sub_lbl,   "PTT birakinca gonderilir");
@@ -144,11 +144,12 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
 
     // ── PROCESSING ───────────────────────────────────────────────────────────
     case SCREEN_PROCESSING:
-        set_bg(CLR_BG_DARK);
+        set_bg(CLR_BG_BLACK);
         lv_obj_add_flag(s_icon_lbl, LV_OBJ_FLAG_HIDDEN);
         lv_obj_clear_flag(s_anim_lbl, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,      0);
-        lv_obj_set_style_text_color(s_sub_lbl,   CLR_LIGHT_GREY, 0);
+        lv_obj_set_style_text_color(s_anim_lbl,  CLR_ORANGE, 0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,  0);
+        lv_obj_set_style_text_color(s_sub_lbl,   CLR_GREY,   0);
         lv_label_set_text(s_anim_lbl,  SPINNER[0]);
         lv_label_set_text(s_title_lbl, "Dusunuyor...");
         lv_label_set_text(s_sub_lbl,   msg ? msg : "AI isleniyor");
@@ -157,10 +158,10 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
 
     // ── SPEAKING ─────────────────────────────────────────────────────────────
     case SCREEN_SPEAKING:
-        set_bg(CLR_BG_BLUE);
-        lv_obj_set_style_text_color(s_icon_lbl,  CLR_YELLOW,     0);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,      0);
-        lv_obj_set_style_text_color(s_sub_lbl,   CLR_LIGHT_GREY, 0);
+        set_bg(CLR_BG_BLACK);
+        lv_obj_set_style_text_color(s_icon_lbl,  CLR_CYAN,  0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE, 0);
+        lv_obj_set_style_text_color(s_sub_lbl,   CLR_GREY,  0);
         lv_label_set_text(s_icon_lbl,  LV_SYMBOL_VOLUME_MAX);
         lv_label_set_text(s_title_lbl, "Yanitlaniyor");
         lv_label_set_text(s_sub_lbl,   msg ? msg : "...");
@@ -168,21 +169,21 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
 
     // ── SMOKE_ALERT ──────────────────────────────────────────────────────────
     case SCREEN_SMOKE_ALERT:
-        set_bg(CLR_BG_RED);
-        lv_obj_set_style_text_color(s_icon_lbl,  CLR_YELLOW, 0);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE,  0);
+        set_bg(CLR_BG_BLACK);
+        lv_obj_set_style_text_color(s_icon_lbl,  CLR_RED,    0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_RED,    0);
         lv_obj_set_style_text_color(s_sub_lbl,   CLR_YELLOW, 0);
         lv_label_set_text(s_icon_lbl,  LV_SYMBOL_WARNING);
         lv_label_set_text(s_title_lbl, "DUMAN TESPIT EDILDI!");
-        lv_label_set_text(s_sub_lbl,   msg ? msg : "Fan aktif - Havalandiriliyor");
+        lv_label_set_text(s_sub_lbl,   msg ? msg : "Fan aktif");
         break;
 
     // ── ERROR ────────────────────────────────────────────────────────────────
     case SCREEN_ERROR:
-        set_bg(CLR_BG_RED);
-        lv_obj_set_style_text_color(s_icon_lbl,  CLR_WHITE, 0);
-        lv_obj_set_style_text_color(s_title_lbl, CLR_WHITE, 0);
-        lv_obj_set_style_text_color(s_sub_lbl,   CLR_WHITE, 0);
+        set_bg(CLR_BG_BLACK);
+        lv_obj_set_style_text_color(s_icon_lbl,  CLR_RED,  0);
+        lv_obj_set_style_text_color(s_title_lbl, CLR_RED,  0);
+        lv_obj_set_style_text_color(s_sub_lbl,   CLR_GREY, 0);
         lv_label_set_text(s_icon_lbl,  LV_SYMBOL_CLOSE);
         lv_label_set_text(s_title_lbl, "Hata");
         lv_label_set_text(s_sub_lbl,   msg ? msg : "Bilinmeyen hata");
