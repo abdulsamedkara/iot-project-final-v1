@@ -804,6 +804,7 @@ async function onCardDetected(sessionId, userName) {
 
 function startPoll() {
   async function poll() {
+    // 1. RFID event queue (anlık push)
     try {
       const res = await fetch(API.rfidPoll(), { signal: AbortSignal.timeout(3000) });
       if (res.status === 200) {
@@ -811,6 +812,19 @@ function startPoll() {
         if (d.session_id) { onCardDetected(d.session_id, d.user_name || 'Kullanıcı'); return; }
       }
     } catch {}
+
+    // 2. Sessions fallback — RFID ile girilmiş, 30s taze session var mı?
+    try {
+      const res = await fetch(`${_proto}//${_host}/sessions`, { signal: AbortSignal.timeout(3000) });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const fresh = (data.sessions || []).find(
+          s => s.rfid_scanned && s.age_sec <= 30 && s.username !== 'Demo Kullanıcı'
+        );
+        if (fresh) { onCardDetected(fresh.session_id, fresh.username); return; }
+      }
+    } catch {}
+
     _rfidHandle = setTimeout(poll, 2000);
   }
   _rfidHandle = setTimeout(poll, 700);

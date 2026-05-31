@@ -246,7 +246,7 @@ async def ws_rfid(ws: WebSocket):
 
 
 # ─── Web UI: RFID polling fallback ───────────────────────────────────────────
-_RFID_EVENT_TTL = 10.0   # saniye — daha eski eventler stale sayılır
+_RFID_EVENT_TTL = 30.0   # saniye — daha eski eventler stale sayılır
 
 @app.get("/api/rfid/pending")
 async def rfid_pending():
@@ -385,13 +385,15 @@ async def smoke_alert(req: Request):
 # ─── Sessions list ────────────────────────────────────────────────────────────
 @app.get("/sessions")
 async def list_sessions():
+    now = time.time()
     with store._lock:
         sessions = [
             {
                 "session_id": sid,
                 "username":   s.username,
                 "has_image":  s.image_b64 is not None,
-                "age_sec":    int(time.time() - s.created_at),
+                "age_sec":    int(now - s.created_at),
+                "rfid_scanned": s.rfid_uid is not None,
             }
             for sid, s in store._sessions.items()
         ]
