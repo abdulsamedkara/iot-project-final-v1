@@ -161,6 +161,18 @@ async def ws_endpoint(ws: WebSocket):
 
                 log.info(f"[{sess.session_id[:8]}] PCM: {len(pcm_bytes)//2/16000:.2f}s")
 
+                current_sess = store.get(sess.session_id)
+                if not current_sess or not current_sess.rfid_uid:
+                    log.warning(f"[{sess.session_id[:8]}] Kart okutulmadan işlem denemesi engellendi.")
+                    text = "Lütfen önce kimlik kartınızı okutun."
+                    audio_pcm = await asyncio.get_event_loop().run_in_executor(
+                        None, tts.synthesize, text
+                    )
+                    if audio_pcm:
+                        encrypted_audio = crypto.encrypt(sess.key_bytes, audio_pcm)
+                        await ws.send_bytes(encrypted_audio)
+                    continue
+
                 t1 = time.time()
                 transcript = await asyncio.get_event_loop().run_in_executor(
                     None, stt.transcribe, pcm_bytes

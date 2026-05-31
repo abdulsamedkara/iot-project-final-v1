@@ -991,9 +991,9 @@ async function syncActiveSession() {
     const res = await fetch(API.sessions(), { signal: AbortSignal.timeout(3000) });
     if (res.ok) {
       const data = await res.json();
-      if (data.sessions && data.sessions.length > 0) {
-        const active = data.sessions[0];
-        
+      const active = data.sessions && data.sessions.length > 0 ? data.sessions.find(s => s.rfid_scanned) : null;
+      
+      if (active) {
         if (S.sessionId === active.session_id) {
           // Zaten bu oturumdaysak fotoğraf durumunu check et
           if (active.has_image && !S.photoUploaded && document.querySelector('.screen.active').id !== 'screen-status') {
@@ -1025,11 +1025,11 @@ async function syncActiveSession() {
           navigate('upload');
         }
       } else {
-        // Sunucuda aktif oturum yoksa ana ekrana dön
+        // Sunucuda aktif RFID okutulmuş oturum yoksa ana ekrana dön
         if (S.sessionId) {
           S.sessionId = null;
           navigate('home', true);
-          showToast('Cihaz bağlantısı koptu', '🔌');
+          showToast('Cihaz bağlantısı koptu veya oturum kapandı', '🔌');
           startRFID();
         }
       }
