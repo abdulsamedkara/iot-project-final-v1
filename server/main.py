@@ -228,7 +228,13 @@ async def ws_endpoint(ws: WebSocket):
 
                 current_sess = store.get(sess.session_id)
                 username  = current_sess.username  if current_sess else "Misafir"
-                image_b64 = current_sess.image_b64 if current_sess else None
+                raw_image = current_sess.image_b64 if current_sess else None
+
+                # Görüntüyü sadece "image" veya "photo" geçiyorsa gönder
+                low_t = transcript.lower()
+                image_b64 = raw_image if raw_image and ("image" in low_t or "photo" in low_t) else None
+                if raw_image and not image_b64:
+                    log.info(f"[{sess.session_id[:8]}] Görüntü atlandı (trigger yok)")
 
                 t2 = time.time()
                 answer = await llm.generate(
