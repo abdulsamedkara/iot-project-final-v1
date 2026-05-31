@@ -322,12 +322,9 @@ static void vib_task(void *arg)
 static void sensor_broadcast_task(void *arg)
 {
     static const char *TAG_SB = "sensor_bcast";
-    // Warmup için bekle
-    vTaskDelay(pdMS_TO_TICKS(35000));
-
     while (1) {
         if (!ws_client_is_connected()) {
-            vTaskDelay(pdMS_TO_TICKS(5000));
+            vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
 
@@ -356,7 +353,7 @@ static void sensor_broadcast_task(void *arg)
             ESP_LOGD(TAG_SB, "Sensor gonderildi");
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 

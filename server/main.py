@@ -49,6 +49,18 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartlab")
 
+# ─── Sensor push stream ──────────────────────────────────────────────────────
+_sensor_ws_queues: list[asyncio.Queue] = []
+_sensor_ws_queues_lock = asyncio.Lock()
+
+async def _push_sensors(payload: dict):
+    async with _sensor_ws_queues_lock:
+        for q in list(_sensor_ws_queues):
+            try:
+                q.put_nowait(payload)
+            except asyncio.QueueFull:
+                pass
+
 # ─── RFID event broadcast ─────────────────────────────────────────────────────
 # Pending events for GET /api/rfid/pending (polling fallback)
 _rfid_events: list[dict] = []
@@ -126,16 +138,28 @@ async def ws_endpoint(ws: WebSocket):
                     if msg_type == "sensors":
                         current_sess = store.get(sess.session_id)
                         if current_sess:
-                            current_sess.sensors = {
-                                "temperature": data.get("temperature"),
-                                "humidity":    data.get("humidity"),
-                                "smoke":       data.get("smoke"),
-                                "ldr":         data.get("ldr"),
-                                "pir":         data.get("pir"),
-                                "flame":       data.get("flame"),
-                                "vib":         data.get("vib"),
-                                "ts":          time.time(),
+                            now = time.time()
+                            prev = current_sess.sensors
+                            # Anlık tetiklenme timestamp'ları koru
+                            vib_last   = now if data.get("vib")   == 1 else prev.get("vib_last_ts", 0)
+                            pir_last   = now if data.get("pir")   == 1 else prev.get("pir_last_ts", 0)
+                            flame_last = now if data.get("flame") == 0 else prev.get("flame_last_ts", 0)
+                            sensor_payload = {
+                                "temperature":   data.get("temperature"),
+                                "humidity":      data.get("humidity"),
+                                "smoke":         data.get("smoke"),
+                                "ldr":           data.get("ldr"),
+                                "pir":           data.get("pir"),
+                                "flame":         data.get("flame"),
+                                "vib":           data.get("vib"),
+                                "ts":            now,
+                                "vib_last_ts":   vib_last,
+                                "pir_last_ts":   pir_last,
+                                "flame_last_ts": flame_last,
+                                "session_id":    sess.session_id,
                             }
+                            current_sess.sensors = sensor_payload
+                            await _push_sensors(sensor_payload)
 
                     elif msg_type == "rfid":
                         uid = data.get("uid", "").upper()
@@ -278,6 +302,33 @@ async def ws_rfid(ws: WebSocket):
             except ValueError:
                 pass
         log.info("WS /ws/rfid: web UI ayrıldı")
+
+
+# ─── Web UI: Sensor push stream ──────────────────────────────────────────────
+@app.websocket("/ws/sensors")
+async def ws_sensors(ws: WebSocket):
+    """Pushes live sensor data to connected web UI clients."""
+    await ws.accept()
+    q: asyncio.Queue = asyncio.Queue(maxsize=20)
+    async with _sensor_ws_queues_lock:
+        _sensor_ws_queues.append(q)
+    try:
+        while True:
+            try:
+                payload = await asyncio.wait_for(q.get(), timeout=20.0)
+                await ws.send_text(json.dumps(payload))
+            except asyncio.TimeoutError:
+                await ws.send_text(json.dumps({"event": "ping"}))
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        log.debug(f"WS /ws/sensors closed: {e}")
+    finally:
+        async with _sensor_ws_queues_lock:
+            try:
+                _sensor_ws_queues.remove(q)
+            except ValueError:
+                pass
 
 
 # ─── Web UI: RFID polling fallback ───────────────────────────────────────────

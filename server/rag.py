@@ -21,9 +21,10 @@ log = logging.getLogger("rag")
 KB_DIR    = Path(__file__).parent.parent / "rag_pdf"
 CHROMA_DIR = Path(__file__).parent / "chroma_db"
 COLLECTION = "lab_docs"
-CHUNK_SIZE  = 400   # karakter
-CHUNK_OVER  = 50    # örtüşme
-TOP_K       = 3     # kaç chunk dönsün
+CHUNK_SIZE      = 400   # karakter
+CHUNK_OVER      = 50    # örtüşme
+TOP_K           = 3     # kaç chunk dönsün
+MAX_CHUNKS_PDF  = 200   # PDF başına max — büyük datasheet'ler RAG'ı domine etmesin
 
 _client     = None
 _collection = None
@@ -96,6 +97,8 @@ def index_pdfs() -> int:
                 page.extract_text() or "" for page in reader.pages
             )
             chunks = _chunk_text(full_text)
+            if len(chunks) > MAX_CHUNKS_PDF:
+                chunks = chunks[:MAX_CHUNKS_PDF]
             log.info(f"PDF: {pdf_path.name} → {len(chunks)} chunk")
 
             ids   = [f"{pdf_path.stem}_{i}" for i in range(len(chunks))]
