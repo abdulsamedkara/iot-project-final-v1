@@ -303,6 +303,22 @@
       <div class="tab-panel" id="tab-sensors">
         <div id="sensors-empty" class="no-sensor">ESP32 sensör verisi bekleniyor...</div>
         <div id="sensors-grid" class="sensor-grid" style="display:none"></div>
+        <!-- Fan Control Card -->
+        <div id="fan-card" class="sensor-card wide" style="display:none">
+          <div class="sensor-label">Fan Kontrolü</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <button id="fan-toggle" class="btn btn-primary" style="width:auto;padding:8px 18px;font-size:13px">Aç</button>
+            <div style="display:flex;gap:6px">
+              <button class="fan-mode-btn btn btn-ghost" data-mode="manual" style="width:auto;padding:6px 12px;font-size:12px">Manuel</button>
+              <button class="fan-mode-btn btn btn-ghost" data-mode="auto" style="width:auto;padding:6px 12px;font-size:12px;background:var(--accent-dim);color:var(--accent)">Otomatik</button>
+            </div>
+          </div>
+          <div id="fan-speed-row" style="display:none">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Hız: <span id="fan-speed-label">50%</span></div>
+            <input id="fan-speed" type="range" min="0" max="100" value="50" step="5" style="width:100%;accent-color:var(--accent)">
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px" id="fan-status-text">Mod: Otomatik (27°C üstü çalışır)</div>
+        </div>
       </div>
 
       <!-- Photo -->
@@ -588,6 +604,9 @@ function renderSensors(s){
       ${lastSeen(s.vib_last_ts,'Titreşim algılandı')}
       <div class="sensor-ts">${ts}</div>
     </div>`;
+  // Fan kartını göster
+  $('fan-card').style.display='';
+  updateFanUI(s);
 }
 function badge(cond,trueLabel,falseLabel,trueClass,falseClass){
   return `<span class="sensor-badge ${cond?trueClass:falseClass}">${cond?trueLabel:falseLabel}</span>`;
@@ -599,6 +618,68 @@ function lastSeen(ts, label){
   const txt=sec<5?'Az önce':`${sec}s önce`;
   return `<div class="sensor-ts" style="color:var(--warn)">${label}: ${txt}</div>`;
 }
+/* ── Fan Control ── */
+const FAN = { on: false, speed: 50, mode: 'auto' };
+
+function updateFanUI(s){
+  // Sync mode from ESP32 if available
+  if(s&&s.fan_mode!=null){ FAN.mode = s.fan_mode===0?'manual':'auto'; }
+
+  const toggle=$('fan-toggle');
+  const speedRow=$('fan-speed-row');
+  const statusTxt=$('fan-status-text');
+
+  // Mode buttons
+  document.querySelectorAll('.fan-mode-btn').forEach(b=>{
+    const active=b.dataset.mode===FAN.mode;
+    b.style.background=active?'var(--accent)':'var(--surface-2)';
+    b.style.color=active?'#fff':'var(--text-sec)';
+  });
+
+  if(FAN.mode==='auto'){
+    speedRow.style.display='none';
+    toggle.style.display='none';
+    statusTxt.textContent='Mod: Otomatik — 27°C üstünde çalışır';
+  } else {
+    speedRow.style.display='';
+    toggle.style.display='';
+    toggle.textContent=FAN.on?'Kapat':'Aç';
+    toggle.style.background=FAN.on?'var(--error)':'var(--accent)';
+    $('fan-speed-label').textContent=FAN.speed+'%';
+    $('fan-speed').value=FAN.speed;
+    statusTxt.textContent=FAN.on?`Çalışıyor — %${FAN.speed} hız`:'Kapalı';
+  }
+}
+
+async function sendFanCmd(){
+  if(!S.sessionId)return;
+  try{
+    await fetch(`${_proto}//${_host}/api/fan`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({on:FAN.on,speed:FAN.speed,mode:FAN.mode,session_id:S.sessionId}),
+      signal:AbortSignal.timeout(3000)
+    });
+  }catch(e){ toast('Fan komutu gönderilemedi','✕'); }
+}
+
+$('fan-toggle').addEventListener('click',()=>{
+  FAN.on=!FAN.on; updateFanUI(null); sendFanCmd();
+});
+$('fan-speed').addEventListener('input',e=>{
+  FAN.speed=parseInt(e.target.value);
+  $('fan-speed-label').textContent=FAN.speed+'%';
+});
+$('fan-speed').addEventListener('change',()=>sendFanCmd());
+
+document.querySelectorAll('.fan-mode-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    FAN.mode=b.dataset.mode;
+    if(FAN.mode==='auto') FAN.on=false;
+    updateFanUI(null); sendFanCmd();
+  });
+});
+
 function smokeB(v){
   if(v==null||v<0)return '<span class="sensor-badge muted">—</span>';
   if(v<800)return '<span class="sensor-badge ok">Temiz</span>';
