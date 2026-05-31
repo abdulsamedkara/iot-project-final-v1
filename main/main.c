@@ -318,42 +318,67 @@ static void vib_task(void *arg)
 }
 
 // ─── Sensör Broadcast Görevi ──────────────────────────────────────────────────
-// Her 5 saniyede sensör verilerini JSON olarak server'a gönderir
+// Fast sensörler (vib/pir/flame): 50ms'de bir state değişimi kontrol et → anında gönder
+// Yavaş sensörler (sıcaklık/nem/duman/ldr): 1s'de bir güncelle
 static void sensor_broadcast_task(void *arg)
 {
     static const char *TAG_SB = "sensor_bcast";
+
+    // Yavaş sensör cache
+    int      s_temp  = 0, s_hum = 0, s_smoke = -1, s_ldr = -1;
+    int      s_pir   = -1, s_flame = -1, s_vib = -1;   // önceki fast state
+    uint32_t slow_tick = 0;  // 1000ms / 50ms = 20 döngüde bir yavaş güncelle
+
     while (1) {
         if (!ws_client_is_connected()) {
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(pdMS_TO_TICKS(50));
             continue;
         }
 
-        int smoke = smoke_sensor_read_avg();
-        int ldr   = ldr_sensor_read_avg();
+        // ── Fast sensörler: her 50ms ──────────────────────────────────────
         int pir   = gpio_get_level(PIR_GPIO);
         int flame = gpio_get_level(FLAME_GPIO);
         int vib   = gpio_get_level(VIB_GPIO);
 
-        dht11_reading_t dht = {0};
-        dht11_read(DHT11_GPIO, &dht);
+        bool fast_changed = (pir != s_pir) || (flame != s_flame) || (vib != s_vib);
+        s_pir = pir; s_flame = flame; s_vib = vib;
 
-        char json[256];
-        snprintf(json, sizeof(json),
-            "{\"type\":\"sensors\","
-            "\"temperature\":%d,\"humidity\":%d,"
-            "\"smoke\":%d,\"ldr\":%d,"
-            "\"pir\":%d,\"flame\":%d,\"vib\":%d}",
-            dht.temperature, dht.humidity,
-            smoke  >= 0 ? smoke  : -1,
-            ldr    >= 0 ? ldr    : -1,
-            pir, flame, vib);
+        // ── Yavaş sensörler: her 1s (20 × 50ms) ─────────────────────────
+        bool slow_update = false;
+        if (++slow_tick >= 20) {
+            slow_tick = 0;
+            slow_update = true;
 
-        esp_err_t err = ws_client_send_text(json);
-        if (err == ESP_OK) {
-            ESP_LOGD(TAG_SB, "Sensor gonderildi");
+            int smoke = smoke_sensor_read_avg();
+            int ldr   = ldr_sensor_read_avg();
+            dht11_reading_t dht = {0};
+            dht11_read(DHT11_GPIO, &dht);
+
+            s_temp  = dht.temperature;
+            s_hum   = dht.humidity;
+            s_smoke = (smoke >= 0) ? smoke : -1;
+            s_ldr   = (ldr   >= 0) ? ldr   : -1;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // ── Gönder: state değişimi VEYA 1s güncelleme ────────────────────
+        if (fast_changed || slow_update) {
+            char json[256];
+            snprintf(json, sizeof(json),
+                "{\"type\":\"sensors\","
+                "\"temperature\":%d,\"humidity\":%d,"
+                "\"smoke\":%d,\"ldr\":%d,"
+                "\"pir\":%d,\"flame\":%d,\"vib\":%d}",
+                s_temp, s_hum, s_smoke, s_ldr,
+                pir, flame, vib);
+
+            ws_client_send_text(json);
+
+            if (fast_changed) {
+                ESP_LOGI(TAG_SB, "Fast change: pir=%d flame=%d vib=%d", pir, flame, vib);
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 
