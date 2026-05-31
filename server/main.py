@@ -61,9 +61,10 @@ _rfid_ws_queues_lock = asyncio.Lock()
 
 async def _broadcast_rfid(event: dict):
     """Push RFID event to polling list and all connected /ws/rfid clients."""
+    event["_ts"] = time.time()   # timestamp for expiry check
     with _rfid_events_lock:
         _rfid_events.append(event)
-        if len(_rfid_events) > 20:   # prevent unbounded growth
+        if len(_rfid_events) > 20:
             _rfid_events.pop(0)
 
     async with _rfid_ws_queues_lock:
@@ -245,15 +246,24 @@ async def ws_rfid(ws: WebSocket):
 
 
 # ─── Web UI: RFID polling fallback ───────────────────────────────────────────
+_RFID_EVENT_TTL = 10.0   # saniye — daha eski eventler stale sayılır
+
 @app.get("/api/rfid/pending")
 async def rfid_pending():
     """
-    Returns and removes the oldest pending RFID card_detected event.
-    Returns 204 when no events are queued.
+    Returns and removes the oldest pending RFID event (max 10s old).
+    Returns 204 when no fresh events are queued.
     """
+    now = time.time()
     with _rfid_events_lock:
+        # Süresi dolmuş eventleri temizle
+        while _rfid_events and now - _rfid_events[0].get("_ts", 0) > _RFID_EVENT_TTL:
+            stale = _rfid_events.pop(0)
+            log.debug(f"Stale RFID event temizlendi: {stale.get('uid')}")
         if _rfid_events:
-            return JSONResponse(_rfid_events.pop(0))
+            event = _rfid_events.pop(0)
+            event.pop("_ts", None)   # iç alan web UI'a gitmesin
+            return JSONResponse(event)
     return Response(status_code=204)
 
 

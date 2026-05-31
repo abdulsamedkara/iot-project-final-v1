@@ -84,6 +84,13 @@ def index_pdfs() -> int:
     added = 0
     for pdf_path in KB_DIR.glob("*.pdf"):
         try:
+            # Zaten indekslenmişse atla — ilk chunk ID'si varlığına bak
+            first_id = f"{pdf_path.stem}_0"
+            existing = col.get(ids=[first_id], include=[])
+            if existing["ids"]:
+                log.info(f"PDF zaten indeksli, atlanıyor: {pdf_path.name}")
+                continue
+
             reader = PdfReader(str(pdf_path))
             full_text = "\n".join(
                 page.extract_text() or "" for page in reader.pages
@@ -91,12 +98,11 @@ def index_pdfs() -> int:
             chunks = _chunk_text(full_text)
             log.info(f"PDF: {pdf_path.name} → {len(chunks)} chunk")
 
-            ids  = [f"{pdf_path.stem}_{i}" for i in range(len(chunks))]
-            vecs = emb.encode(chunks, show_progress_bar=False).tolist()
+            ids   = [f"{pdf_path.stem}_{i}" for i in range(len(chunks))]
+            vecs  = emb.encode(chunks, show_progress_bar=False).tolist()
             metas = [{"source": pdf_path.name, "chunk": i}
                      for i in range(len(chunks))]
 
-            # Batch upsert — var olanlar güncellenir
             col.upsert(ids=ids, embeddings=vecs,
                        documents=chunks, metadatas=metas)
             added += len(chunks)
