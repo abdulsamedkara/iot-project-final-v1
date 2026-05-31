@@ -49,6 +49,21 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartlab")
 
+# ─── ESP32 command queues (server → ESP32) ───────────────────────────────────
+_esp32_cmd_queues: dict[str, asyncio.Queue] = {}
+_esp32_cmd_lock = asyncio.Lock()
+
+async def _send_to_esp32(session_id: str, payload: dict) -> bool:
+    async with _esp32_cmd_lock:
+        q = _esp32_cmd_queues.get(session_id)
+    if q:
+        try:
+            q.put_nowait(payload)
+            return True
+        except asyncio.QueueFull:
+            pass
+    return False
+
 # ─── Sensor push stream ──────────────────────────────────────────────────────
 _sensor_ws_queues: list[asyncio.Queue] = []
 _sensor_ws_queues_lock = asyncio.Lock()
@@ -123,9 +138,25 @@ async def ws_endpoint(ws: WebSocket):
         "key_b64":    sess.key_b64,
     }, separators=(',', ':')))
 
+    # Register command queue for this ESP32 session
+    cmd_q: asyncio.Queue = asyncio.Queue(maxsize=20)
+    async with _esp32_cmd_lock:
+        _esp32_cmd_queues[sess.session_id] = cmd_q
+
     try:
         while True:
-            message = await ws.receive()
+            # Check for outgoing commands (non-blocking)
+            while not cmd_q.empty():
+                try:
+                    cmd = cmd_q.get_nowait()
+                    await ws.send_text(json.dumps(cmd, separators=(',', ':')))
+                except asyncio.QueueEmpty:
+                    break
+
+            try:
+                message = await asyncio.wait_for(ws.receive(), timeout=0.1)
+            except asyncio.TimeoutError:
+                continue
 
             if message.get("type") == "websocket.disconnect":
                 raise WebSocketDisconnect(code=message.get("code", 1000))
@@ -276,6 +307,8 @@ async def ws_endpoint(ws: WebSocket):
         log.error(f"[{sess.session_id[:8]}] Beklenmeyen hata: {e}", exc_info=True)
     finally:
         store.remove(sess.session_id)
+        async with _esp32_cmd_lock:
+            _esp32_cmd_queues.pop(sess.session_id, None)
 
 
 # ─── Web UI: RFID push stream ─────────────────────────────────────────────────
@@ -387,6 +420,38 @@ async def upload_image(session_id: str, file: UploadFile = File(...)):
 @app.post("/api/session/{session_id}/photo")
 async def upload_photo_alias(session_id: str, photo: UploadFile = File(...)):
     return await _handle_upload(session_id, photo)
+
+
+# ─── Fan control ─────────────────────────────────────────────────────────────
+@app.post("/api/fan")
+async def fan_control(req: Request):
+    """
+    Web UI'dan fan kontrolü.
+    Body: {"on": true/false, "speed": 0-100, "mode": "manual"/"auto", "session_id": "..."}
+    """
+    body = await req.json()
+    session_id = body.get("session_id", "")
+
+    # Find active session — if no session_id given, use first available with rfid_uid
+    if not session_id:
+        with store._lock:
+            for sid, s in store._sessions.items():
+                if s.rfid_uid:
+                    session_id = sid
+                    break
+
+    if not session_id:
+        return JSONResponse({"error": "Aktif session yok"}, status_code=404)
+
+    cmd = {
+        "type":  "fan",
+        "on":    body.get("on", False),
+        "speed": body.get("speed", 0),
+        "mode":  body.get("mode", "manual"),
+    }
+    sent = await _send_to_esp32(session_id, cmd)
+    log.info(f"Fan komutu → [{session_id[:8]}] {cmd} sent={sent}")
+    return {"ok": sent, "session_id": session_id}
 
 
 def _resize_image(data: bytes, max_px: int = 512, quality: int = 70) -> bytes:

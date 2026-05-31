@@ -362,18 +362,30 @@ static void sensor_broadcast_task(void *arg)
             s_hum   = s_dht_hum;
             s_smoke = (smoke >= 0) ? smoke : -1;
             s_ldr   = (ldr   >= 0) ? ldr   : -1;
+
+            // Sıcaklık auto-fan (sadece auto modda, smoke_task override etmez)
+            if (s_fan_mode == 1 && s_smoke < SMOKE_ADC_HALF) {
+                if (s_temp >= 27) {
+                    uint8_t duty = (s_temp >= 35) ? 255 : (uint8_t)((s_temp - 27) * 32);
+                    fan_set_duty(duty);
+                } else if (s_temp < 25) {
+                    fan_off();
+                }
+            }
         }
 
         // ── Gönder: state değişimi VEYA 1s güncelleme ────────────────────
         if (fast_changed || slow_update) {
-            char json[256];
+            char json[300];
             snprintf(json, sizeof(json),
                 "{\"type\":\"sensors\","
                 "\"temperature\":%d,\"humidity\":%d,"
                 "\"smoke\":%d,\"ldr\":%d,"
-                "\"pir\":%d,\"flame\":%d,\"vib\":%d}",
+                "\"pir\":%d,\"flame\":%d,\"vib\":%d,"
+                "\"fan_mode\":%d,\"fan_speed\":%d}",
                 s_temp, s_hum, s_smoke, s_ldr,
-                pir, flame, vib);
+                pir, flame, vib,
+                s_fan_mode, s_fan_speed);
 
             ws_client_send_text(json);
 
@@ -400,8 +412,15 @@ static void on_audio(const uint8_t *pcm, size_t len)
 
 // Kullanıcı adını buraya yaz (RFID yanıtından)
 static char s_username[64] = {0};
+
+// Fan modu: 0=manual, 1=auto_temp
+static volatile int  s_fan_mode  = 1;   // başlangıçta auto
+static volatile int  s_fan_speed = 0;   // 0-100, manuel mod için
+
 static void on_text(const char *json, size_t len)
 {
+    static const char *TAG_T = "on_text";
+
     // {"type":"user","name":"Samed Kara"}
     const char *p = strstr(json, "\"name\":\"");
     if (p) {
@@ -412,7 +431,33 @@ static void on_text(const char *json, size_t len)
             if (n >= sizeof(s_username)) n = sizeof(s_username) - 1;
             memcpy(s_username, p, n);
             s_username[n] = '\0';
-            ESP_LOGI(TAG, "Kullanici: %s", s_username);
+            ESP_LOGI(TAG_T, "Kullanici: %s", s_username);
+        }
+    }
+
+    // {"type":"fan","on":true/false,"speed":75,"mode":"manual"/"auto"}
+    if (strstr(json, "\"type\":\"fan\"")) {
+        // mode
+        if (strstr(json, "\"mode\":\"auto\""))   s_fan_mode = 1;
+        if (strstr(json, "\"mode\":\"manual\"")) s_fan_mode = 0;
+
+        if (s_fan_mode == 0) {
+            // Manuel: on/off + speed
+            bool fan_on = strstr(json, "\"on\":true") != NULL;
+            // speed değerini parse et
+            const char *sp = strstr(json, "\"speed\":");
+            if (sp) {
+                s_fan_speed = atoi(sp + 8);
+                if (s_fan_speed < 0)   s_fan_speed = 0;
+                if (s_fan_speed > 100) s_fan_speed = 100;
+            }
+            if (!fan_on) {
+                fan_off();
+                ESP_LOGI(TAG_T, "Fan kapat (manuel)");
+            } else {
+                fan_set_duty((uint8_t)(s_fan_speed * 255 / 100));
+                ESP_LOGI(TAG_T, "Fan ac (manuel) %d%%", s_fan_speed);
+            }
         }
     }
 }
