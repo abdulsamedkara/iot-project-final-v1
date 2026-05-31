@@ -454,6 +454,16 @@ async def fan_control(req: Request):
     return {"ok": sent, "session_id": session_id}
 
 
+# ─── Session logout ──────────────────────────────────────────────────────────
+@app.post("/api/session/{session_id}/logout")
+async def session_logout(session_id: str):
+    """Web UI logout → ESP32'ye logout komutu gönderir, session'ı siler."""
+    await _send_to_esp32(session_id, {"type": "logout"})
+    store.remove(session_id)
+    log.info(f"[{session_id[:8]}] Logout — session silindi")
+    return {"ok": True}
+
+
 def _resize_image(data: bytes, max_px: int = 512, quality: int = 70) -> bytes:
     """Resize image to max_px on longest side, re-encode as JPEG to reduce size."""
     try:

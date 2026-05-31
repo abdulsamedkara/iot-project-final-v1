@@ -417,10 +417,18 @@ static void on_audio(const uint8_t *pcm, size_t len)
 
 // Kullanıcı adını buraya yaz (RFID yanıtından)
 static char s_username[64] = {0};
+static volatile bool s_logout_req = false;
 
 static void on_text(const char *json, size_t len)
 {
     static const char *TAG_T = "on_text";
+
+    // {"type":"logout"}
+    if (strstr(json, "\"type\":\"logout\"")) {
+        s_logout_req = true;
+        ESP_LOGI(TAG_T, "Logout komutu alindi");
+        return;
+    }
 
     // {"type":"user","name":"Samed Kara"}
     const char *p = strstr(json, "\"name\":\"");
@@ -554,6 +562,17 @@ void app_main(void)
     int         rfid_fail_count = 0;
 
     while (1) {
+
+        // ── 0. Logout kontrolü ────────────────────────────────────────────────
+        if (s_logout_req) {
+            s_logout_req = false;
+            session_ok   = false;
+            memset(&last_card, 0, sizeof(last_card));
+            s_username[0] = '\0';
+            fan_off();
+            display_switch(SCREEN_IDLE, "RFID kartinizi okutun");
+            ESP_LOGI(TAG, "Logout — RFID bekleme ekranina donuldu");
+        }
 
         // ── 1. RFID Kart Okuma ────────────────────────────────────────────────
         if (!session_ok) {
