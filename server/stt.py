@@ -12,7 +12,7 @@ import logging
 log = logging.getLogger("stt")
 
 _model = None
-_MODEL_NAME = "base"   # "tiny" daha hızlı, "small" daha doğru
+_MODEL_NAME = "tiny"   # "tiny" hızlı, "base" daha doğru, "small" en doğru
 
 try:
     import torch
@@ -57,7 +57,7 @@ def transcribe(pcm_bytes: bytes, sample_rate: int = 16000,
     segments, info = model.transcribe(
         audio_file,
         language=language,
-        beam_size=5,
+        beam_size=1,
         vad_filter=True,          # Sessiz bölümleri filtrele
         vad_parameters={"min_silence_duration_ms": 500},
     )

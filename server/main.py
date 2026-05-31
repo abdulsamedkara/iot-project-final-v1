@@ -383,7 +383,7 @@ async def upload_photo_alias(session_id: str, photo: UploadFile = File(...)):
     return await _handle_upload(session_id, photo)
 
 
-def _resize_image(data: bytes, max_px: int = 800, quality: int = 75) -> bytes:
+def _resize_image(data: bytes, max_px: int = 512, quality: int = 70) -> bytes:
     """Resize image to max_px on longest side, re-encode as JPEG to reduce size."""
     try:
         from PIL import Image
