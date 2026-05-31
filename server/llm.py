@@ -55,7 +55,7 @@ async def generate(
     payload = {
         "model":   MODEL_NAME,
         "stream":  False,
-        "options": {"temperature": 0.7, "num_predict": 80},
+        "options": {"temperature": 0.7, "num_predict": 60},
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             msg,
