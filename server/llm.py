@@ -15,13 +15,17 @@ TIMEOUT_SEC        = 60.0   # text-only
 TIMEOUT_VISION_SEC = 120.0  # with image
 
 SYSTEM_PROMPT = (
-    "You are SmartLab Assistant, an AI assistant for an engineering lab. "
-    "You help users understand and safely operate lab equipment.\n"
+    "You are SmartLab Assistant, an AI assistant for an engineering lab.\n"
     "Rules:\n"
     "- Always respond in English\n"
-    "- Keep answers to 2-4 sentences, be concise\n"
+    "- Keep answers to 2-3 sentences, be concise\n"
     "- State safety warnings first if relevant\n"
     "- Use precise technical terminology\n"
+    "- If an image is provided: FIRST describe what you see in the image, "
+    "then answer the question based on what is visible. "
+    "Do NOT ignore the image. The image is the primary context.\n"
+    "- Use [Lab Manual Context] only when it directly relates to what is shown "
+    "in the image or asked in the question. Ignore it if unrelated.\n"
 )
 
 
@@ -40,7 +44,8 @@ async def generate(
     """
     user_parts = [f"User ({username}): {transcript}"]
 
-    if rag_context:
+    # RAG context: görüntü varsa gönderme — LLM'in görüntüyü önceliklendirmesi için
+    if rag_context and not image_b64:
         user_parts.append(f"\n[Lab Manual Context]:\n{rag_context}")
 
     msg: dict = {"role": "user", "content": "\n".join(user_parts)}
@@ -50,7 +55,7 @@ async def generate(
     payload = {
         "model":   MODEL_NAME,
         "stream":  False,
-        "options": {"temperature": 0.7, "num_predict": 200},
+        "options": {"temperature": 0.7, "num_predict": 80},
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             msg,

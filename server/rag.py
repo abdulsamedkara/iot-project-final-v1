@@ -143,11 +143,11 @@ def query(text: str, n_results: int = TOP_K) -> Optional[str]:
         if not docs:
             return None
 
-        # Mesafe > 0.8 ise ilgisiz — atla
+        # Mesafe > 0.45 ise ilgisiz — atla (daha sıkı eşik = alakasız chunk yok)
         relevant = [
             (d, m["source"], dist)
             for d, m, dist in zip(docs, metas, dists)
-            if dist < 0.8
+            if dist < 0.45
         ]
 
         if not relevant:
