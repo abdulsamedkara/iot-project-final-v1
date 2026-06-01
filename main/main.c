@@ -147,14 +147,16 @@ static void smoke_task(void *arg)
 
         ESP_LOGI(TAG2, "ADC=%d", adc);
 
-        // Fan hız kontrolü
-        if (adc < SMOKE_ADC_CLEAR) {
-            fan_off();
-        } else if (adc < SMOKE_ADC_HALF) {
-            fan_half();
-        } else {
+        // Fan hız kontrolü — sadece duman varsa override et
+        // Temiz hava durumunda temperature-based fan (sensor_broadcast_task) devreye girer
+        if (adc >= SMOKE_ADC_FULL) {
             fan_full();
+        } else if (adc >= SMOKE_ADC_HALF) {
+            fan_half();
+        } else if (adc >= SMOKE_ADC_CLEAR) {
+            fan_half();
         }
+        // adc < SMOKE_ADC_CLEAR → fan kontrolünü sensor_broadcast_task'e bırak
 
         // Alarm debounce: 3 ardışık yüksek okuma = alarm
         if (adc >= SMOKE_ADC_HALF) {

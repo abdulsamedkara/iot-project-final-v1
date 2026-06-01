@@ -58,8 +58,8 @@
 #define SMOKE_SAMPLE_COUNT  32      // Gürültü filtreleme için ortalama
 
 // ─── L298N Fan Motor Sürücü ──────────────────────────────────────────────────
-#define FAN_IN4_GPIO        21      // Yön pini (HIGH = ileri)
-#define FAN_ENA_GPIO        18      // PWM hız pini
+#define FAN_IN4_GPIO        18      // Yön pini (HIGH = ileri)
+#define FAN_ENA_GPIO        21      // PWM hız pini
 #define FAN_LEDC_TIMER      LEDC_TIMER_1
 #define FAN_LEDC_CHANNEL    LEDC_CHANNEL_1
 #define FAN_PWM_FREQ_HZ     25000   // 25 kHz — motor sessiz frekansı
