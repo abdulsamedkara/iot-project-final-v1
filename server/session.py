@@ -18,6 +18,7 @@ from typing import Optional
 # ─── Basit kullanıcı veritabanı (gerçek projede DB'ye taşı) ──────────────────
 RFID_USERS: dict[str, str] = {
     "A1B2C3D4": "Abdulsamet Kara",
+    "F1B00C07": "Abdul Samed Kara",
     "11223344": "Test Kullanicisi",
     "635113FD": "Mert Abdullahoğlu",
     # Yeni kartlar eklemek için: "HEXUID": "Ad Soyad"
@@ -78,6 +79,16 @@ class SessionStore:
                 sess.image_b64 = image_b64
                 return True
             return False
+
+    def clear_user(self, session_id: str):
+        """Kullanıcı verilerini (RFID, foto, mesajlar) temizler ama bağlantıyı/session'ı korur."""
+        with self._lock:
+            sess = self._sessions.get(session_id)
+            if sess:
+                sess.rfid_uid = None
+                sess.username = "Misafir"
+                sess.image_b64 = None
+                sess.messages = []
 
     def remove(self, session_id: str):
         with self._lock:

@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -c \"import inspect, piper.download_voices as d; print\\(inspect.getmembers\\(d, inspect.isfunction\\)\\)\")"
+      "Bash(python -c \"import inspect, piper.download_voices as d; print\\(inspect.getmembers\\(d, inspect.isfunction\\)\\)\")",
+      "Bash(git add *)",
+      "Bash(grep -v \"//.*GPIO\\\\|printf\\\\|log\\\\|ESP_LOG\")",
+      "Bash(Remove-Item *)"
     ]
   }
 }

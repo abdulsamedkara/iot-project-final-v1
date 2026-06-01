@@ -459,8 +459,8 @@ async def fan_control(req: Request):
 async def session_logout(session_id: str):
     """Web UI logout → ESP32'ye logout komutu gönderir, session'ı siler."""
     await _send_to_esp32(session_id, {"type": "logout"})
-    store.remove(session_id)
-    log.info(f"[{session_id[:8]}] Logout — session silindi")
+    store.clear_user(session_id)
+    log.info(f"[{session_id[:8]}] Logout — kullanıcı verileri temizlendi ama bağlantı açık")
     return {"ok": True}
 
 

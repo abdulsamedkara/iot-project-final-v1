@@ -103,13 +103,15 @@ static void mfrc_antenna_on(void)
 
 esp_err_t rfid_init(void)
 {
-    spi_device_interface_config_t dev_cfg = {
-        .clock_speed_hz = RFID_SPI_FREQ_HZ,
-        .mode           = 0,    // CPOL=0, CPHA=0
-        .spics_io_num   = RFID_CS_GPIO,
-        .queue_size     = 4,
-    };
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI_HOST, &dev_cfg, &s_spi));
+    if (s_spi == NULL) {
+        spi_device_interface_config_t dev_cfg = {
+            .clock_speed_hz = RFID_SPI_FREQ_HZ,
+            .mode           = 0,    // CPOL=0, CPHA=0
+            .spics_io_num   = RFID_CS_GPIO,
+            .queue_size     = 4,
+        };
+        ESP_ERROR_CHECK(spi_bus_add_device(SPI_HOST, &dev_cfg, &s_spi));
+    }
 
     mfrc_reset();
 

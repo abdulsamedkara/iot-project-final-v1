@@ -4,7 +4,6 @@
 #include "ui_smartlab.h"
 #include "lvgl.h"
 #include "config.h"
-#include "qrcode.h"
 #include "esp_heap_caps.h"
 #include <string.h>
 #include <stdio.h>
@@ -230,64 +229,27 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
     case SCREEN_READY: {
         draw_header("HAZIR", CLR_CYAN);
 
-        // Sol: ikon + başlık
+        lv_obj_t *bg_card = mk_card(scr, 200, 200, CLR_SURF, CLR_CYAN, 16);
+        lv_obj_set_style_border_opa(bg_card, LV_OPA_20, 0);
+        lv_obj_align(bg_card, LV_ALIGN_CENTER, 0, 10);
+
         draw_icon_circle(lv_color_hex(0x001820), CLR_CYAN,
-                         LV_SYMBOL_AUDIO, CLR_CYAN, -55);
+                         LV_SYMBOL_AUDIO, CLR_CYAN, -30);
 
         lv_obj_t *title = mk_lbl(scr, &lv_font_montserrat_20, CLR_WHITE,
                                   msg ? msg : "Hazir");
-        lv_obj_align(title, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_align(title, LV_ALIGN_CENTER, 0, 30);
 
         lv_obj_t *sub = mk_lbl(scr, &lv_font_montserrat_16, CLR_GREY,
                                 "PTT'ye basarak sorun");
-        lv_obj_align(sub, LV_ALIGN_CENTER, 0, 24);
+        lv_obj_align(sub, LV_ALIGN_CENTER, 0, 58);
 
-        // ── QR Kodu ──────────────────────────────────────────────────────────
         char url_buf[48];
-        snprintf(url_buf, sizeof(url_buf), "http://%s:%d", SERVER_HOST, SERVER_PORT);
+        snprintf(url_buf, sizeof(url_buf), LV_SYMBOL_HOME "  %s:%d", SERVER_HOST, SERVER_PORT);
+        lv_obj_t *url_lbl = mk_lbl(scr, &lv_font_montserrat_14, CLR_CYAN, url_buf);
+        lv_obj_align(url_lbl, LV_ALIGN_BOTTOM_MID, 0, -28);
 
-        // QR buffer: version 2 = 25x25 = 79 bytes
-        static uint8_t qr_data[80];
-        QRCode qr;
-        int8_t qr_ret = qrcode_initText(&qr, qr_data, 2, QR_ECC_LOW, url_buf);
-
-        if (qr_ret == 0) {
-            // QR modül başına 7 piksel → 25×7 = 175px
-            const uint8_t MSIZE = 7;
-            const uint8_t QR_PX = qr.size * MSIZE;
-            const uint8_t X0 = (240 - QR_PX) / 2;
-            const uint8_t Y0 = 52;
-
-            // Beyaz arka plan (quiet zone)
-            lv_obj_t *qr_bg = mk_box(scr, QR_PX + 8, QR_PX + 8, CLR_WHITE, 4);
-            lv_obj_set_pos(qr_bg, (int16_t)(X0 - 4), (int16_t)(Y0 - 4));
-
-            // Her modül için siyah kare
-            for (uint8_t y = 0; y < qr.size; y++) {
-                for (uint8_t x = 0; x < qr.size; x++) {
-                    if (qrcode_getModule(&qr, x, y)) {
-                        lv_obj_t *dot = mk_box(scr, MSIZE, MSIZE, CLR_BG, 0);
-                        lv_obj_set_pos(dot, (int16_t)(X0 + x*MSIZE),
-                                            (int16_t)(Y0 + y*MSIZE));
-                    }
-                }
-            }
-
-            // URL alt yazı
-            lv_obj_t *url_lbl = lv_label_create(scr);
-            lv_obj_set_style_text_font(url_lbl, &lv_font_montserrat_16, 0);
-            lv_obj_set_style_text_color(url_lbl, CLR_CYAN, 0);
-            lv_obj_set_style_bg_opa(url_lbl, LV_OPA_TRANSP, 0);
-            lv_label_set_text(url_lbl, url_buf);
-            lv_obj_align(url_lbl, LV_ALIGN_BOTTOM_MID, 0, -4);
-        } else {
-            // QR başarısız → sadece URL text
-            char url_short[48];
-            snprintf(url_short, sizeof(url_short), LV_SYMBOL_HOME " %s:%d",
-                     SERVER_HOST, SERVER_PORT);
-            lv_obj_t *url_lbl2 = mk_lbl(scr, &lv_font_montserrat_16, CLR_CYAN, url_short);
-            lv_obj_align(url_lbl2, LV_ALIGN_BOTTOM_MID, 0, -8);
-        }
+        draw_footer(LV_SYMBOL_WIFI "  Bagli", CLR_CYAN);
         break;
     }
 
@@ -296,7 +258,7 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
         draw_header("KAYIT", CLR_YELLOW);
 
         lv_obj_t *bg_card = mk_card(scr, 200, 200, CLR_SURF, CLR_YELLOW, 16);
-        lv_obj_set_style_border_opa(bg_card, LV_OPA_35, 0);
+        lv_obj_set_style_border_opa(bg_card, LV_OPA_30, 0);
         lv_obj_align(bg_card, LV_ALIGN_CENTER, 0, 10);
 
         draw_icon_circle(lv_color_hex(0x1A1400), CLR_YELLOW,
@@ -329,7 +291,7 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
         draw_header("AI", CLR_ORANGE);
 
         lv_obj_t *bg_card = mk_card(scr, 200, 200, CLR_SURF, CLR_ORANGE, 16);
-        lv_obj_set_style_border_opa(bg_card, LV_OPA_25, 0);
+        lv_obj_set_style_border_opa(bg_card, LV_OPA_20, 0);
         lv_obj_align(bg_card, LV_ALIGN_CENTER, 0, 10);
 
         // Spinner dairesi
@@ -362,7 +324,7 @@ void ui_smartlab_show(screen_id_t id, const char *msg)
         draw_header("KONUSUYOR", CLR_MAGENTA);
 
         lv_obj_t *bg_card = mk_card(scr, 200, 200, CLR_SURF, CLR_MAGENTA, 16);
-        lv_obj_set_style_border_opa(bg_card, LV_OPA_25, 0);
+        lv_obj_set_style_border_opa(bg_card, LV_OPA_20, 0);
         lv_obj_align(bg_card, LV_ALIGN_CENTER, 0, 10);
 
         draw_icon_circle(lv_color_hex(0x130A1A), CLR_MAGENTA,
