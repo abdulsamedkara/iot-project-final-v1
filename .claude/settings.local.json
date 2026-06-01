@@ -4,7 +4,18 @@
       "Bash(python -c \"import inspect, piper.download_voices as d; print\\(inspect.getmembers\\(d, inspect.isfunction\\)\\)\")",
       "Bash(git add *)",
       "Bash(grep -v \"//.*GPIO\\\\|printf\\\\|log\\\\|ESP_LOG\")",
-      "Bash(Remove-Item *)"
+      "Bash(Remove-Item *)",
+      "PowerShell(python -c \"import docx; print\\('python-docx available:', docx.__version__\\)\" 2>&1)",
+      "PowerShell(Get-Item \"C:\\\\Users\\\\Mert\\\\Desktop\\\\iot\\\\iot-project-final-v1\\\\SmartLab_Academic_Report_v2.docx\" | Select-Object Name, @{N=\"Size_KB\";E={[math]::Round\\($_.Length/1KB\\)}}, LastWriteTime)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Mert\\\\Desktop\\\\iot\\\\iot-project-final-v1\\\\assets\\\\circuit\" | Select-Object Name, @{N=\"KB\";E={[math]::Round\\($_.Length/1KB\\)}})",
+      "PowerShell(Get-Item \"C:\\\\Users\\\\Mert\\\\Desktop\\\\iot\\\\iot-project-final-v1\\\\tmp_report\\\\RTEU-EN LOGO.png\" | Select-Object Name, @{N=\"KB\";E={[math]::Round\\($_.Length/1KB\\)}})",
+      "PowerShell(Get-Item \"C:\\\\Users\\\\Mert\\\\Desktop\\\\iot\\\\iot-project-final-v1\\\\tmp_report\\\\SmartLab_Academic_Report_v3.docx\" | Select-Object Name, @{N=\"KB\";E={[math]::Round\\($_.Length/1KB\\)}}, LastWriteTime)",
+      "WebSearch",
+      "WebFetch(domain:ieeexplore.ieee.org)",
+      "WebFetch(domain:www.semanticscholar.org)",
+      "WebFetch(domain:www.researchgate.net)",
+      "WebFetch(domain:arxiv.org)",
+      "PowerShell(Get-Item \"C:\\\\Users\\\\Mert\\\\Desktop\\\\iot\\\\iot-project-final-v1\\\\tmp_report\\\\SmartLab_Academic_Report_v4.docx\" | Select-Object Name, @{N=\"KB\";E={[math]::Round\\($_.Length/1KB\\)}}, LastWriteTime)"
     ]
   }
 }

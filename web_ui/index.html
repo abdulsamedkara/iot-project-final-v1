@@ -40,7 +40,7 @@
     html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--font); -webkit-font-smoothing:antialiased; overflow:hidden; }
     #app { position:relative; width:100%; height:100%; max-width:430px; margin:0 auto; display:flex; flex-direction:column; background:var(--bg); }
 
-    /* ── Screen transitions ── */
+    /* Handles smooth sliding animations between different app screens to provide a seamless user experience */
     .screen { position:absolute; inset:0; display:flex; flex-direction:column; transform:translateX(100%); transition:transform 0.36s cubic-bezier(0.25,0.46,0.45,0.94); z-index:0; overflow:hidden; }
     .screen.active  { transform:translateX(0);     z-index:2; }
     .screen.leaving { transform:translateX(-100%); z-index:1; }
@@ -48,7 +48,7 @@
     #app.reverse .screen.active    { transform:translateX(0);    }
     #app.reverse .screen.leaving   { transform:translateX(100%); }
 
-    /* ── Buttons ── */
+    /* Button styles including primary, secondary, and loading states */
     .btn { width:100%; padding:14px 20px; border-radius:var(--radius-sm); font-size:15px; font-weight:600; font-family:var(--font); cursor:pointer; border:none; transition:opacity 0.15s,transform 0.15s; display:flex; align-items:center; justify-content:center; gap:8px; -webkit-tap-highlight-color:transparent; user-select:none; }
     .btn:active:not(:disabled) { transform:scale(0.975); opacity:0.85; }
     .btn:disabled { opacity:0.38; cursor:not-allowed; }
@@ -65,7 +65,7 @@
     @keyframes pulse-blue  { 0%,100%{box-shadow:0 0 0 0 rgba(2,136,209,0.45)}60%{box-shadow:0 0 0 5px rgba(2,136,209,0)}}
     @keyframes fadeUp { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
 
-    /* ════════════ SCREEN 1 — RFID HOME ════════════ */
+    /* Styles for the initial login screen requiring an RFID scan */
     #screen-home { background:var(--bg); justify-content:flex-start; }
     #screen-home::before { content:''; position:absolute; inset:0; pointer-events:none; background-image:radial-gradient(circle,rgba(2,136,209,0.06) 1px,transparent 1px); background-size:24px 24px; }
     .home-statusbar { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; padding:max(env(safe-area-inset-top),16px) 20px 10px; }
@@ -94,10 +94,10 @@
     .rfid-sub   { font-size:13px; color:var(--text-muted); line-height:1.6; }
     .rfid-demo-link { font-size:12px; color:var(--text-muted); text-decoration:underline; text-underline-offset:3px; background:none; border:none; cursor:pointer; font-family:var(--font); padding:2px 0; -webkit-tap-highlight-color:transparent; }
 
-    /* ════════════ SCREEN 2 — DASHBOARD ════════════ */
+    /* Styles for the main application dashboard after login */
     #screen-dash { background:var(--bg); display:flex; flex-direction:column; }
 
-    /* Header */
+    /* Top header styling for the dashboard containing user information and a logout button */
     .dash-header { display:flex; align-items:center; gap:10px; padding:max(env(safe-area-inset-top),14px) 16px 10px; background:rgba(244,247,251,0.94); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); flex-shrink:0; }
     .dash-avatar { width:34px; height:34px; border-radius:50%; background:var(--accent-dim); border:1.5px solid var(--border-accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .dash-user { flex:1; min-width:0; }
@@ -106,18 +106,18 @@
     .dash-timer { font-family:var(--mono); font-size:13px; font-weight:700; color:var(--accent); letter-spacing:1px; }
     .dash-logout { width:32px; height:32px; border-radius:8px; background:var(--surface); border:1px solid var(--border-med); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; color:var(--error); }
 
-    /* Tab bar */
+    /* Navigation tab bar for switching between different dashboard sections */
     .tab-bar { display:flex; background:var(--surface); border-bottom:1px solid var(--border); flex-shrink:0; }
     .tab-btn { flex:1; padding:11px 4px; font-size:12px; font-weight:600; color:var(--text-muted); background:none; border:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; border-bottom:2px solid transparent; transition:color 0.2s,border-color 0.2s; -webkit-tap-highlight-color:transparent; }
     .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
     .tab-btn svg { flex-shrink:0; }
 
-    /* Tab panels */
+    /* Container for the content of each tab, hiding inactive tabs and showing the active one */
     .tab-panels { flex:1; overflow:hidden; position:relative; }
     .tab-panel  { position:absolute; inset:0; overflow-y:auto; padding:12px 16px; padding-bottom:max(env(safe-area-inset-bottom),20px); display:none; flex-direction:column; gap:10px; }
     .tab-panel.active { display:flex; }
 
-    /* ── Chat panel ── */
+    /* Chat interface styles including message bubbles and empty state placeholders */
     .chat-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-muted); font-size:13px; }
     .chat-msgs  { display:flex; flex-direction:column; gap:8px; }
     .msg-row    { display:flex; gap:8px; animation:fadeUp 0.2s ease; }
@@ -129,7 +129,7 @@
     .msg-time { font-size:10px; color:var(--text-muted); margin-top:3px; text-align:right; }
     .ptt-hint { background:var(--accent-dim); border:1px solid var(--border-accent); border-radius:var(--radius-sm); padding:10px 13px; font-size:12px; color:var(--accent); display:flex; align-items:center; gap:8px; flex-shrink:0; }
 
-    /* ── Sensors panel ── */
+    /* Sensor data grid and individual sensor card styling with status indicators */
     .sensor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .sensor-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px; box-shadow:var(--shadow-sm); }
     .sensor-card.wide { grid-column:1/-1; }
@@ -144,7 +144,7 @@
     .sensor-ts { font-size:10px; color:var(--text-muted); margin-top:4px; }
     .no-sensor { color:var(--text-muted); font-size:13px; text-align:center; padding:20px; }
 
-    /* ── Photo panel ── */
+    /* Photo upload interface including camera area, image preview, and upload progress */
     .welcome-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-sm); flex-shrink:0; }
     .camera-area { background:var(--surface); border:2px dashed var(--border-accent); border-radius:var(--radius); min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; cursor:pointer; position:relative; overflow:hidden; transition:background 0.2s; -webkit-tap-highlight-color:transparent; }
     .camera-area:active { background:var(--accent-dim); }
@@ -164,7 +164,7 @@
     .progress-track { height:3px; background:var(--surface-2); border-radius:2px; overflow:hidden; }
     .progress-fill  { height:100%; background:var(--accent); width:0%; transition:width 0.25s ease; }
 
-    /* ── Sheet + Toast ── */
+    /* Bottom sheet modal for logout confirmation and toast notifications for feedback messages */
     .sheet-overlay { position:fixed; inset:0; background:rgba(13,17,23,0.35); backdrop-filter:blur(6px); z-index:200; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity 0.28s; }
     .sheet-overlay.open { opacity:1; pointer-events:all; }
     .sheet-overlay.open .sheet { transform:translateY(0); }
@@ -180,7 +180,7 @@
 <body>
 <div id="app">
 
-  <!-- ═══ SCREEN 1: RFID HOME ═══ -->
+  <!-- Initial login screen requiring an RFID scan -->
   <div class="screen active" id="screen-home">
     <div class="home-statusbar">
       <div class="statusbar-time" id="clock">--:--</div>
@@ -228,9 +228,9 @@
     </div>
   </div>
 
-  <!-- ═══ SCREEN 2: DASHBOARD ═══ -->
+  <!-- Main application dashboard containing chat, sensors, and photo upload functionality -->
   <div class="screen" id="screen-dash">
-    <!-- Header -->
+    <!-- Dashboard top header with user profile and session timer -->
     <div class="dash-header">
       <div class="dash-avatar">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -251,7 +251,7 @@
       </div>
     </div>
 
-    <!-- Tab bar -->
+    <!-- Navigation tabs for switching between dashboard views -->
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="chat">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -276,10 +276,10 @@
       </button>
     </div>
 
-    <!-- Tab panels -->
+    <!-- Container for the different tab contents -->
     <div class="tab-panels">
 
-      <!-- Chat -->
+      <!-- Chat tab panel for displaying messages and voice interaction hints -->
       <div class="tab-panel active" id="tab-chat">
         <div id="chat-empty" class="chat-empty">
           <svg width="40" height="40" viewBox="0 0 40 40" fill="none" opacity="0.35">
@@ -299,11 +299,11 @@
         </div>
       </div>
 
-      <!-- Sensors -->
+      <!-- Sensors tab panel showing real-time data from ESP32 sensors -->
       <div class="tab-panel" id="tab-sensors">
         <div id="sensors-empty" class="no-sensor">ESP32 sensör verisi bekleniyor...</div>
         <div id="sensors-grid" class="sensor-grid" style="display:none"></div>
-        <!-- LED Strip Control Card -->
+        <!-- Control interface for managing the LED strip mode and brightness -->
         <div id="led-card" class="sensor-card wide" style="display:none">
           <div class="sensor-label">Şerit LED</div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
@@ -320,7 +320,7 @@
           <div style="font-size:11px;color:var(--text-muted);margin-top:6px" id="led-status-text">Mod: Otomatik (LDR)</div>
         </div>
 
-        <!-- Fan Control Card -->
+        <!-- Control interface for managing the cooling fan mode and speed -->
         <div id="fan-card" class="sensor-card wide" style="display:none">
           <div class="sensor-label">Fan Kontrolü</div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
@@ -338,7 +338,7 @@
         </div>
       </div>
 
-      <!-- Photo -->
+      <!-- Photo tab panel for capturing and uploading images -->
       <div class="tab-panel" id="tab-photo">
         <div class="welcome-card">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -379,7 +379,7 @@
   </div>
 </div>
 
-<!-- Logout sheet -->
+<!-- Bottom sheet modal for confirming user logout -->
 <div class="sheet-overlay" id="sheet-overlay">
   <div class="sheet">
     <div class="sheet-handle"></div>
@@ -412,11 +412,11 @@ const S = { sessionId:null, userName:null, sessionStart:null, timerTick:null,
 const $ = id => document.getElementById(id);
 const app = $('app');
 
-/* ── Clock ── */
+// Updates the clock UI every 30 seconds to show the current time to the user
 function updateClock() { $('clock').textContent = new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}); }
 updateClock(); setInterval(updateClock,30000);
 
-/* ── Toast ── */
+// Displays a temporary toast notification with an optional icon
 let _tt;
 function toast(msg,icon='✓'){
   const t=$('toast'); t.innerHTML=`<span>${icon}</span><span>${msg}</span>`;
@@ -425,7 +425,7 @@ function toast(msg,icon='✓'){
 
 const delay = ms => new Promise(r=>setTimeout(r,ms));
 
-/* ── Navigation ── */
+// Handles animated screen transitions by manipulating CSS classes
 function navigate(toId, back=false){
   const cur=document.querySelector('.screen.active'), next=$('screen-'+toId);
   if(!next||cur===next)return;
@@ -435,7 +435,7 @@ function navigate(toId, back=false){
   setTimeout(()=>{ cur.classList.remove('leaving'); app.classList.remove('reverse'); },400);
 }
 
-/* ── Tabs ── */
+// Attaches click event listeners to tabs to switch between the chat, sensors, and photo panels
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const tab=btn.dataset.tab;
@@ -444,7 +444,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 
-/* ════ SCREEN 1: RFID ════ */
+// Manages the RFID scanning logic and transitions to the dashboard upon successful detection
 let _rfidHandle=null;
 function stopRFID(){ if(_rfidHandle){ if(_rfidHandle instanceof WebSocket)_rfidHandle.close(); else clearTimeout(_rfidHandle); _rfidHandle=null; } }
 
@@ -506,7 +506,7 @@ $('demo-card-btn').addEventListener('click',async()=>{
   onCardDetected('demo'+Date.now().toString(36),'Demo Kullanıcı');
 });
 
-/* ════ SCREEN 2: DASHBOARD ════ */
+// Initializes and manages the dashboard state including polling and WebSocket connections
 let _sensorWs = null;
 
 function startDashboard(){
@@ -518,12 +518,12 @@ function startDashboard(){
 
   resetPhoto();
 
-  // Chat + photo: poll every 2s (chat doesn't need sub-100ms)
+  // Poll for chat and photo updates every 2 seconds to keep the UI synchronized
   clearInterval(S.dataPoll);
   pollChat();
   S.dataPoll=setInterval(pollChat,2000);
 
-  // Sensors: WebSocket push for near-realtime
+  // Use a WebSocket connection to receive near-real-time sensor updates from the ESP32
   startSensorWs();
 }
 
@@ -535,7 +535,7 @@ function startSensorWs(){
       try{
         const d=JSON.parse(e.data);
         if(d.event==='ping')return;
-        // Only update if it's for our session
+        // Filter incoming sensor data to only process events belonging to the current user session
         if(!d.session_id||d.session_id===S.sessionId) renderSensors(d);
       }catch{}
     };
@@ -552,17 +552,17 @@ async function pollChat(){
     if(!r.ok)return;
     const d=await r.json();
     renderChat(d.messages||[]);
-    // Sadece yeni fotoğraf seçilmemişse renderPhotoUploaded çağır
+    // Call renderPhotoUploaded only if no new photo has been selected
     if(d.has_photo&&!S.photoUploaded&&!S.photoFile){ S.photoUploaded=true; renderPhotoUploaded(); }
   }catch{}
 }
 
 async function pollData(){
-  // kept for compatibility
+  // Maintained for backward compatibility with older API clients
   await pollChat();
 }
 
-/* ── Chat ── */
+// Renders the chat messages in the UI and automatically scrolls to the latest message
 function renderChat(msgs){
   if(!msgs.length){ $('chat-empty').style.display=''; $('chat-msgs').style.display='none'; return; }
   $('chat-empty').style.display='none'; $('chat-msgs').style.display='';
@@ -581,7 +581,7 @@ function renderChat(msgs){
 }
 function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* ── Sensors ── */
+// Updates the sensor dashboard cards with the latest values and calculates elapsed time since the last update
 function renderSensors(s){
   if(!s||!s.ts){ $('sensors-empty').style.display=''; $('sensors-grid').style.display='none'; return; }
   $('sensors-empty').style.display='none'; $('sensors-grid').style.display='';
@@ -622,7 +622,7 @@ function renderSensors(s){
       ${lastSeen(s.vib_last_ts,'Titreşim algılandı')}
       <div class="sensor-ts">${ts}</div>
     </div>`;
-  // LED ve Fan kartlarını göster
+  // Make the LED and Fan control interfaces visible once sensor data is received
   $('led-card').style.display='';
   $('fan-card').style.display='';
   updateFanUI(s);
@@ -634,13 +634,14 @@ function badge(cond,trueLabel,falseLabel,trueClass,falseClass){
 function lastSeen(ts, label){
   if(!ts||ts===0)return '';
   const sec=Math.round(Date.now()/1000-ts);
-  if(sec>300)return '';  // 5 dakikadan eskiyse gösterme
+  if(sec>300)return '';  // Hide the warning if the event occurred more than 5 minutes ago
   const txt=sec<5?'Az önce':`${sec}s önce`;
   return `<div class="sensor-ts" style="color:var(--warn)">${label}: ${txt}</div>`;
 }
-/* ── LED Control ── */
+// State object for managing the LED strip
 const LED = { on: false, brightness: 100, mode: 'auto' };
 
+// Updates the LED control UI based on the current state and synchronizes mode from the ESP32
 function updateLedUI(s){
   if(s&&s.led_mode!=null){ LED.mode = s.led_mode===0?'manual':'auto'; }
   const toggle=$('led-toggle');
@@ -697,18 +698,19 @@ document.querySelectorAll('.led-mode-btn').forEach(b=>{
   });
 });
 
-/* ── Fan Control ── */
+// State object for managing the cooling fan
 const FAN = { on: false, speed: 50, mode: 'auto' };
 
+// Updates the Fan control UI based on the current state and synchronizes mode from the ESP32 if available
 function updateFanUI(s){
-  // Sync mode from ESP32 if available
+  // Synchronize mode from ESP32 if available
   if(s&&s.fan_mode!=null){ FAN.mode = s.fan_mode===0?'manual':'auto'; }
 
   const toggle=$('fan-toggle');
   const speedRow=$('fan-speed-row');
   const statusTxt=$('fan-status-text');
 
-  // Mode buttons
+  // Update the visual state of the fan mode selection buttons
   document.querySelectorAll('.fan-mode-btn').forEach(b=>{
     const active=b.dataset.mode===FAN.mode;
     b.style.background=active?'var(--accent)':'var(--surface-2)';
@@ -766,7 +768,7 @@ function smokeB(v){
   return '<span class="sensor-badge err">Tehlikeli</span>';
 }
 
-/* ── Photo tab ── */
+// DOM elements used within the photo upload tab
 const cameraArea=$('camera-area'), fileInput=$('file-input'),
       previewImg=$('preview-img'), previewOverlay=$('preview-overlay'),
       camPlaceholder=$('cam-placeholder'), sendBtn=$('send-btn'),
@@ -826,7 +828,7 @@ sendBtn.addEventListener('click',async()=>{
   }
 });
 
-/* ── Logout ── */
+// Manages the logout flow, clears session data, stops active connections, and returns to the home screen
 $('dash-logout-btn').addEventListener('click',()=>$('sheet-overlay').classList.add('open'));
 $('sheet-cancel').addEventListener('click',()=>$('sheet-overlay').classList.remove('open'));
 $('sheet-overlay').addEventListener('click',e=>{ if(e.target===$('sheet-overlay'))$('sheet-overlay').classList.remove('open'); });
@@ -837,13 +839,13 @@ $('sheet-confirm').addEventListener('click',()=>{
   if(_sensorWs){try{_sensorWs.close();}catch{}_sensorWs=null;}
   Object.assign(S,{sessionId:null,userName:null,sessionStart:null,timerTick:null,photoFile:null,photoUploaded:false,dataPoll:null,lastMsgCount:0});
   sessionStorage.removeItem('sl_session');
-  // ESP32'ye logout komutu gönder
+  // Notify the ESP32 to terminate the active session and clean up resources
   if(logoutSid) fetch(`${_proto}//${_host}/api/session/${logoutSid}/logout`,{method:'POST'}).catch(()=>{});
   $('dash-timer').textContent='00:00'; resetPhoto();
   navigate('home',true); toast('Oturum kapatıldı','👋'); startRFID();
 });
 
-// Sayfa yenilenince session'ı geri yükle
+// Attempts to restore an active session from sessionStorage or the server upon page initialization
 (async () => {
   try {
     const saved = sessionStorage.getItem('sl_session');
@@ -865,7 +867,7 @@ $('sheet-confirm').addEventListener('click',()=>{
       }
     }
   } catch {}
-  // sessionStorage'da kayıt yoksa sunucuda zaten aktif bir session var mı diye bak
+  // Query the backend for any active sessions if the local storage does not have a valid session record
   try {
     const r = await fetch(`${_proto}//${_host}/sessions`, {signal: AbortSignal.timeout(3000)});
     if (r.ok) {

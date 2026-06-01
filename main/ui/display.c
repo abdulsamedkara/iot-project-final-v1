@@ -1,6 +1,6 @@
-// display.c — LVGL + ILI9341 başlatma ve ekran yöneticisi
-// DMA callback kullanılmaz; lv_disp_flush_ready() doğrudan çağrılır.
-// Bu yaklaşım tüm ESP-IDF 5.x versiyonlarında derlenir.
+// LVGL and ILI9341 initialization and display manager
+// The DMA callback is not utilized; instead, lv_disp_flush_ready() is called directly.
+// This ensures compatibility across all ESP-IDF 5.x versions.
 
 #include "display.h"
 #include "ui_smartlab.h"
@@ -19,16 +19,20 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
+// Tag used for logging display events
 static const char *TAG = "display";
 
+// Time interval for LVGL tick increment in milliseconds
 #define LVGL_TICK_MS  5
 
+// Mutex for thread-safe LVGL operations
 static SemaphoreHandle_t      s_mux   = NULL;
+// Handle for the LCD panel device
 static esp_lcd_panel_handle_t s_panel = NULL;
 
-// ─── LVGL flush callback ──────────────────────────────────────────────────────
-// draw_bitmap senkron tamamlanır, ardından flush_ready çağrılır.
-// DMA interrupt gerekmez — versiyondan bağımsız, güvenli yaklaşım.
+// LVGL flush callback function
+// The draw_bitmap function completes synchronously, after which flush_ready is called.
+// This approach avoids the need for a DMA interrupt, making it version independent and safe.
 static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area,
                            lv_color_t *color_p)
 {
@@ -39,16 +43,17 @@ static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area,
     lv_disp_flush_ready(drv);
 }
 
-// ─── LVGL tick timer ──────────────────────────────────────────────────────────
+// Timer callback function to increment the LVGL tick
 static void lvgl_tick_cb(void *arg)
 {
     lv_tick_inc(LVGL_TICK_MS);
 }
 
-// ─── LVGL güncelleme görevi ───────────────────────────────────────────────────
+// Dedicated FreeRTOS task to handle LVGL updates and timers
 static void lvgl_task(void *arg)
 {
     while (1) {
+        // Attempt to take the mutex before calling the LVGL timer handler
         if (xSemaphoreTake(s_mux, pdMS_TO_TICKS(10)) == pdTRUE) {
             lv_timer_handler();
             xSemaphoreGive(s_mux);
@@ -57,10 +62,10 @@ static void lvgl_task(void *arg)
     }
 }
 
-// ─── display_init ─────────────────────────────────────────────────────────────
+// Initializes the display hardware, panel, and LVGL library
 esp_err_t display_init(void)
 {
-    // Arka ışık açık
+    // Configure and enable the TFT backlight GPIO pin
     gpio_config_t bl = {
         .pin_bit_mask = 1ULL << TFT_BL_GPIO,
         .mode         = GPIO_MODE_OUTPUT,
@@ -68,7 +73,8 @@ esp_err_t display_init(void)
     gpio_config(&bl);
     gpio_set_level(TFT_BL_GPIO, 1);
 
-    // SPI panel IO (SPI_HOST daha önce spi_bus_initialize ile açılmış olmalı)
+    // Initialize SPI panel IO
+    // Note that the SPI_HOST must have been initialized previously via spi_bus_initialize
     esp_lcd_panel_io_handle_t io = NULL;
     esp_lcd_panel_io_spi_config_t io_cfg = {
         .dc_gpio_num       = TFT_DC_GPIO,
@@ -82,7 +88,7 @@ esp_err_t display_init(void)
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(
         (esp_lcd_spi_bus_handle_t)SPI_HOST, &io_cfg, &io));
 
-    // ILI9341 panel
+    // Configure and initialize the ILI9341 LCD panel
     esp_lcd_panel_dev_config_t panel_cfg = {
         .reset_gpio_num = TFT_RST_GPIO,
         .rgb_endian     = LCD_RGB_ENDIAN_BGR,
@@ -94,15 +100,17 @@ esp_err_t display_init(void)
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(s_panel, true, false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(s_panel, true));
 
-    // LVGL başlat
+    // Initialize the core LVGL library
     lv_init();
 
-    // Çift tampon — LVGL_BUF_LINES config.h'dan gelir
+    // Setup double buffering for LVGL
+    // The LVGL_BUF_LINES definition is provided by config.h
     static lv_color_t buf1[TFT_WIDTH * LVGL_BUF_LINES];
     static lv_color_t buf2[TFT_WIDTH * LVGL_BUF_LINES];
     static lv_disp_draw_buf_t draw_buf;
     lv_disp_draw_buf_init(&draw_buf, buf1, buf2, TFT_WIDTH * LVGL_BUF_LINES);
 
+    // Register the display driver with LVGL
     static lv_disp_drv_t drv;
     lv_disp_drv_init(&drv);
     drv.hor_res  = TFT_WIDTH;
@@ -111,7 +119,8 @@ esp_err_t display_init(void)
     drv.draw_buf = &draw_buf;
     lv_disp_drv_register(&drv);
 
-    // Tick timer (her LVGL_TICK_MS ms'de bir lv_tick_inc çağrılır)
+    // Setup and start the LVGL tick timer
+    // This timer calls lv_tick_inc at a regular interval defined by LVGL_TICK_MS
     const esp_timer_create_args_t tick_args = {
         .callback = lvgl_tick_cb,
         .name     = "lvgl_tick",
@@ -120,20 +129,22 @@ esp_err_t display_init(void)
     ESP_ERROR_CHECK(esp_timer_create(&tick_args, &tick_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, LVGL_TICK_MS * 1000));
 
-    // Mutex oluştur
+    // Create the mutex to protect LVGL API calls across different tasks
     s_mux = xSemaphoreCreateMutex();
 
-    // UI nesnelerini önce oluştur, sonra task'ı başlat
+    // Initialize the UI objects before starting the LVGL task
     ui_smartlab_init();
     display_switch(SCREEN_IDLE, NULL);
 
-    // LVGL task (Core 1 — WiFi/WS Core 0'da çalışır)
+    // Create and start the FreeRTOS task for handling LVGL updates
+    // Pinned to Core 1, as Core 0 handles WiFi and WebSocket tasks
     xTaskCreatePinnedToCore(lvgl_task, "lvgl", 8192, NULL, 4, NULL, 1);
 
-    ESP_LOGI(TAG, "Ekran hazir: %dx%d", TFT_WIDTH, TFT_HEIGHT);
+    ESP_LOGI(TAG, "Display ready: %dx%d", TFT_WIDTH, TFT_HEIGHT);
     return ESP_OK;
 }
 
+// Switches the active screen display to a new state and updates the message
 void display_switch(screen_id_t id, const char *msg)
 {
     if (display_lock(200)) {
@@ -142,11 +153,13 @@ void display_switch(screen_id_t id, const char *msg)
     }
 }
 
+// Tries to take the LVGL mutex with the specified timeout
 bool display_lock(int timeout_ms)
 {
     return xSemaphoreTake(s_mux, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
 }
 
+// Releases the LVGL mutex
 void display_unlock(void)
 {
     xSemaphoreGive(s_mux);

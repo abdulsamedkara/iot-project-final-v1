@@ -11,6 +11,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Sets up the theme colors, typography, and foundational variables for the UI */
     :root {
       --bg:             #F4F7FB;
       --surface:        #FFFFFF;
@@ -51,7 +52,7 @@
       overflow:hidden; background:var(--bg);
     }
 
-    /* ── Transition fix: z-index + reflow ── */
+    /* Ensures smooth screen transitions by managing z-index layers and hardware acceleration */
     .screen {
       position:absolute; inset:0;
       display:flex; flex-direction:column;
@@ -68,7 +69,7 @@
     #app.reverse .screen.active     { transform:translateX(0);     z-index:2; }
     #app.reverse .screen.leaving    { transform:translateX(100%);  z-index:1; }
 
-    /* ── Buttons ── */
+    /* Button styles including primary, secondary, and loading states */
     .btn {
       width:100%; padding:15px 20px; border-radius:var(--radius-sm);
       font-size:15px; font-weight:600; font-family:var(--font);
@@ -96,7 +97,7 @@
     .spinner.light { border-color:rgba(2,136,209,0.2); border-top-color:var(--accent); }
     @keyframes spin { to { transform:rotate(360deg); } }
 
-    /* ── Shared header (screens 2–3) ── */
+    /* Shared header styling for secondary screens containing title and action buttons */
     .screen-header {
       display:flex; align-items:center; gap:12px;
       padding:14px 20px;
@@ -116,7 +117,7 @@
       -webkit-tap-highlight-color:transparent;
     }
 
-    /* ── Dots ── */
+    /* Status indicator dot animations for varying connectivity states */
     .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
     .dot-idle       { background:var(--text-muted); }
     .dot-connecting { background:var(--warn);    animation:pulse-warn  1.2s infinite; }
@@ -141,9 +142,7 @@
       to   { opacity:1; transform:translateY(0); }
     }
 
-    /* ════════════════════════════════
-       SCREEN 1 — RFID HOME (redesigned)
-    ════════════════════════════════ */
+    /* Styles for the initial login screen requiring an RFID scan */
     #screen-home {
       background:var(--bg);
       justify-content:flex-start;
@@ -177,7 +176,7 @@
       gap:14px; overflow-y:auto;
     }
 
-    /* Branding */
+    /* Branding elements including application logo and titles */
     .home-brand {
       display:flex; flex-direction:column; align-items:center; gap:10px;
       padding:8px 0 4px;
@@ -201,7 +200,7 @@
       text-transform:uppercase; color:var(--text-muted);
     }
 
-    /* RFID card */
+    /* RFID scanning card visual presentation */
     .rfid-card {
       width:100%; background:var(--surface);
       border:1px solid var(--border-med); border-radius:24px;
@@ -254,7 +253,7 @@
       100%{ transform:scale(1); }
     }
 
-    /* scan line */
+    /* Scanning animation over the RFID icon */
     @keyframes scan-line {
       0%   { top:16%; opacity:0; }
       12%  { opacity:1; }
@@ -274,7 +273,7 @@
     }
     .rfid-sub { font-size:13px; color:var(--text-muted); line-height:1.6; }
 
-    /* Step hint strip */
+    /* Informational steps instructing users on how to use the system */
     .rfid-steps {
       width:100%; display:flex; gap:0;
       border:1px solid var(--border); border-radius:var(--radius-sm);
@@ -295,7 +294,7 @@
     }
     .step-label { font-size:10.5px; font-weight:600; color:var(--text-sec); text-align:center; line-height:1.3; }
 
-    /* Lab info */
+    /* Display of current lab metrics such as capacity and status */
     .lab-bar {
       width:100%; background:var(--surface);
       border:1px solid var(--border); border-radius:var(--radius);
@@ -320,9 +319,7 @@
     }
     .rfid-demo-link:active { opacity:0.5; }
 
-    /* ════════════════════════════════
-       SCREEN 2 — PHOTO UPLOAD
-    ════════════════════════════════ */
+    /* Photo upload screen styling for capturing and sending images */
     .upload-body {
       padding:16px 20px;
       padding-bottom:max(env(safe-area-inset-bottom),24px);
@@ -398,9 +395,7 @@
     }
     .ptt-note svg { flex-shrink:0; margin-top:1px; }
 
-    /* ════════════════════════════════
-       SCREEN 3 — SESSION STATUS
-    ════════════════════════════════ */
+    /* Session status screen showing live connection details and active timers */
     .status-body {
       padding:16px 20px;
       padding-bottom:max(env(safe-area-inset-bottom),24px);
@@ -436,7 +431,7 @@
     .divider { height:1px; background:var(--border); }
     .action-group { display:flex; flex-direction:column; gap:10px; }
 
-    /* ── Bottom sheet ── */
+    /* Bottom sheet modal for confirming logout actions */
     .sheet-overlay {
       position:fixed; inset:0;
       background:rgba(13,17,23,0.35); backdrop-filter:blur(6px);
@@ -460,7 +455,7 @@
     .sheet-title { font-size:17px; font-weight:700; text-align:center; }
     .sheet-sub   { font-size:14px; color:var(--text-sec); text-align:center; line-height:1.5; }
 
-    /* ── Toast ── */
+    /* Toast notification styles for temporary feedback messages */
     .toast {
       position:fixed;
       bottom:max(28px,calc(env(safe-area-inset-bottom) + 16px));
@@ -481,7 +476,7 @@
 <body>
 <div id="app">
 
-  <!-- SCREEN 1 — RFID HOME -->
+  <!-- Initial login screen requiring an RFID scan -->
   <div class="screen active" id="screen-home">
     <div class="home-statusbar">
       <div class="statusbar-time" id="clock">--:--</div>
@@ -541,7 +536,7 @@
     </div>
   </div>
 
-  <!-- SCREEN 2 — PHOTO UPLOAD -->
+  <!-- Photo upload screen for capturing and sending images -->
   <div class="screen" id="screen-upload">
     <div class="screen-header">
       <div class="icon-btn" id="upload-back" role="button" aria-label="Geri">
@@ -610,7 +605,7 @@
     </div>
   </div>
 
-  <!-- SCREEN 3 — SESSION STATUS -->
+  <!-- Session status screen showing live connection details and active timers -->
   <div class="screen" id="screen-status">
     <div class="screen-header">
       <div class="screen-title">Oturum Durumu</div>
@@ -692,6 +687,7 @@
 <input type="file" id="file-input" accept="image/*" capture="environment">
 
 <script>
+// Stores the current session information, connection handles, and endpoints for backend communication
 const S = {
   sessionId: null, userName: null,
   photoFile: null, photoUploaded: false,
@@ -720,14 +716,14 @@ const pttNote        = $('ptt-note');
 const sheetOverlay   = $('sheet-overlay');
 const toast          = $('toast');
 
-/* ── Clock ── */
+// Updates the clock UI every 30 seconds to show the current time to the user
 function updateClock() {
   $('clock').textContent = new Date().toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit' });
 }
 updateClock();
 setInterval(updateClock, 30000);
 
-/* ── Navigation (transition fix: z-index + reflow) ── */
+// Handles animated screen transitions by manipulating CSS classes
 function navigate(toId, back = false) {
   const current = document.querySelector('.screen.active');
   const next    = $('screen-' + toId);
@@ -736,8 +732,7 @@ function navigate(toId, back = false) {
   if (back) app.classList.add('reverse');
   else      app.classList.remove('reverse');
 
-  /* Force reflow so next screen's starting CSS position is painted
-     before the transition to translateX(0) begins */
+  // Force reflow so next screen's starting CSS position is painted before the transition to translateX(0) begins
   void next.offsetHeight;
 
   current.classList.add('leaving');
@@ -750,7 +745,7 @@ function navigate(toId, back = false) {
   }, 420);
 }
 
-/* ── Toast ── */
+// Displays a temporary toast notification with an optional icon
 let _toastTimer;
 function showToast(msg, icon = '✓') {
   toast.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
@@ -761,7 +756,7 @@ function showToast(msg, icon = '✓') {
 
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-/* ── Screen 1: RFID ── */
+// Manages the RFID scanning logic and transitions to the dashboard upon successful detection
 let _rfidHandle = null;
 
 function stopRFID() {
@@ -829,7 +824,7 @@ function startRFID() {
 
 $('demo-card-btn').addEventListener('click', () => onCardDetected('AB12CD', 'Abdulsamet Kara'));
 
-/* ── Screen 2: Upload ── */
+// Manages the UI state and logic for photo selection, preview, and server upload
 function resetUpload() {
   cameraArea.classList.remove('has-photo');
   camPlaceholder.style.display = '';
@@ -928,7 +923,7 @@ sendBtn.addEventListener('click', async () => {
 
 $('upload-back').addEventListener('click', () => navigate('home', true));
 
-/* ── Screen 3: Status ── */
+// Updates and displays the active session details including time elapsed and photo status
 function updateStatusScreen() {
   $('stat-session-id').textContent = S.sessionId || '——';
   $('stat-user-name').textContent  = S.userName  || '—';
