@@ -787,6 +787,15 @@ $('sheet-confirm').addEventListener('click',()=>{
       }
     }
   } catch {}
+  // sessionStorage'da kayıt yoksa sunucuda zaten aktif bir session var mı diye bak
+  try {
+    const r = await fetch(`${_proto}//${_host}/sessions`, {signal: AbortSignal.timeout(3000)});
+    if (r.ok) {
+      const d = await r.json();
+      const active = (d.sessions || []).find(s => s.rfid_scanned);
+      if (active) { onCardDetected(active.session_id, active.username || 'Kullanıcı'); return; }
+    }
+  } catch {}
   startRFID();
 })();
 </script>

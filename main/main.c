@@ -536,14 +536,17 @@ void app_main(void)
     // 7h. Sensör broadcast (web UI için 5s'de bir JSON gönderir)
     xTaskCreatePinnedToCore(sensor_broadcast_task, "sensor_bc", 4096, NULL, 2, NULL, 0);
 
-    // 8. WebSocket → session key al
+    // 8. WebSocket → session key al (PTT ile yeniden deneme destekli)
     display_switch(SCREEN_IDLE, "Sunucuya baglaniliyor...");
     ESP_ERROR_CHECK(ws_client_init(on_audio, on_text));
 
-    if (ws_client_wait_session(15000) != ESP_OK) {
-        display_switch(SCREEN_ERROR, "Sunucu yanit vermiyor");
-        ESP_LOGE(TAG, "Session alinamadi.");
-        return;
+    while (ws_client_wait_session(15000) != ESP_OK) {
+        display_switch(SCREEN_ERROR, "Sunucu bulunamadi\nYeniden deneniyor...");
+        ESP_LOGW(TAG, "Session alinamadi, 10s sonra tekrar denenecek...");
+        ws_client_deinit();
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        display_switch(SCREEN_IDLE, "Sunucuya baglaniliyor...");
+        ESP_ERROR_CHECK(ws_client_init(on_audio, on_text));
     }
 
     // 9. PSRAM kayıt tamponu (16kHz × 2B × 15s = 480KB)

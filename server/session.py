@@ -20,7 +20,7 @@ RFID_USERS: dict[str, str] = {
     "A1B2C3D4": "Abdulsamet Kara",
     "F1B00C07": "Abdul Samed Kara",
     "11223344": "Test Kullanicisi",
-    "635113FD": "Mert Abdullahoğlu",
+    "635113FD": "Mert Abdullahoglu",
     # Yeni kartlar eklemek için: "HEXUID": "Ad Soyad"
 }
 
