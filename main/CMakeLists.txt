@@ -9,6 +9,7 @@ idf_component_register(
         "rfid.c"
         "smoke_sensor.c"
         "fan_control.c"
+        "led_strip_ctrl.c"
         "ui/display.c"
         "ui/ui_smartlab.c"
     INCLUDE_DIRS "." "ui"

@@ -216,6 +216,13 @@ bool rfid_poll(rfid_card_t *card)
         return false;
     }
 
+    // Eğer donanımsal gürültü nedeniyle 00 00 00 00 gelirse, bcc de 0 olacağı için hata yakalanamaz.
+    // Bu yüzden UID'nin tamamen sıfır olma durumunu manuel reddediyoruz.
+    if (uid_resp.data[0] == 0 && uid_resp.data[1] == 0 && 
+        uid_resp.data[2] == 0 && uid_resp.data[3] == 0) {
+        return false;
+    }
+
     memcpy(card->uid, uid_resp.data, 4);
     card->uid_len = 4;
 

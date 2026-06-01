@@ -303,6 +303,23 @@
       <div class="tab-panel" id="tab-sensors">
         <div id="sensors-empty" class="no-sensor">ESP32 sensör verisi bekleniyor...</div>
         <div id="sensors-grid" class="sensor-grid" style="display:none"></div>
+        <!-- LED Strip Control Card -->
+        <div id="led-card" class="sensor-card wide" style="display:none">
+          <div class="sensor-label">Şerit LED</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <button id="led-toggle" class="btn btn-primary" style="width:auto;padding:8px 18px;font-size:13px">Aç</button>
+            <div style="display:flex;gap:6px">
+              <button class="led-mode-btn btn btn-ghost" data-mode="manual" style="width:auto;padding:6px 12px;font-size:12px">Manuel</button>
+              <button class="led-mode-btn btn btn-ghost" data-mode="auto" style="width:auto;padding:6px 12px;font-size:12px;background:var(--accent-dim);color:var(--accent)">Otomatik</button>
+            </div>
+          </div>
+          <div id="led-brightness-row" style="display:none">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Parlaklık: <span id="led-brightness-label">100%</span></div>
+            <input id="led-brightness" type="range" min="0" max="100" value="100" step="5" style="width:100%;accent-color:var(--accent)">
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px" id="led-status-text">Mod: Otomatik (LDR)</div>
+        </div>
+
         <!-- Fan Control Card -->
         <div id="fan-card" class="sensor-card wide" style="display:none">
           <div class="sensor-label">Fan Kontrolü</div>
@@ -605,9 +622,11 @@ function renderSensors(s){
       ${lastSeen(s.vib_last_ts,'Titreşim algılandı')}
       <div class="sensor-ts">${ts}</div>
     </div>`;
-  // Fan kartını göster
+  // LED ve Fan kartlarını göster
+  $('led-card').style.display='';
   $('fan-card').style.display='';
   updateFanUI(s);
+  updateLedUI(s);
 }
 function badge(cond,trueLabel,falseLabel,trueClass,falseClass){
   return `<span class="sensor-badge ${cond?trueClass:falseClass}">${cond?trueLabel:falseLabel}</span>`;
@@ -619,6 +638,65 @@ function lastSeen(ts, label){
   const txt=sec<5?'Az önce':`${sec}s önce`;
   return `<div class="sensor-ts" style="color:var(--warn)">${label}: ${txt}</div>`;
 }
+/* ── LED Control ── */
+const LED = { on: false, brightness: 100, mode: 'auto' };
+
+function updateLedUI(s){
+  if(s&&s.led_mode!=null){ LED.mode = s.led_mode===0?'manual':'auto'; }
+  const toggle=$('led-toggle');
+  const brightnessRow=$('led-brightness-row');
+  const statusTxt=$('led-status-text');
+
+  document.querySelectorAll('.led-mode-btn').forEach(b=>{
+    const active=b.dataset.mode===LED.mode;
+    b.style.background=active?'var(--accent)':'var(--surface-2)';
+    b.style.color=active?'#fff':'var(--text-sec)';
+  });
+
+  if(LED.mode==='auto'){
+    brightnessRow.style.display='none';
+    toggle.style.display='none';
+    statusTxt.textContent='Mod: Otomatik (LDR)';
+  } else {
+    brightnessRow.style.display='';
+    toggle.style.display='';
+    toggle.textContent=LED.on?'Kapat':'Aç';
+    toggle.style.background=LED.on?'var(--error)':'var(--accent)';
+    $('led-brightness-label').textContent=LED.brightness+'%';
+    $('led-brightness').value=LED.brightness;
+    statusTxt.textContent=LED.on?`Açık — %${LED.brightness} parlaklık`:'Kapalı';
+  }
+}
+
+async function sendLedCmd(){
+  if(!S.sessionId) return;
+  try{
+    await fetch(`${_proto}//${_host}/api/led`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({on: LED.on, brightness: LED.brightness, mode: LED.mode, session_id: S.sessionId}),
+      signal: AbortSignal.timeout(3000)
+    });
+  }catch{ toast('LED komutu gönderilemedi','✕'); }
+}
+
+$('led-toggle').addEventListener('click', () => {
+  LED.on = !LED.on; updateLedUI(null); sendLedCmd();
+});
+$('led-brightness').addEventListener('input', e => {
+  LED.brightness = parseInt(e.target.value);
+  $('led-brightness-label').textContent = LED.brightness + '%';
+});
+$('led-brightness').addEventListener('change', () => sendLedCmd());
+
+document.querySelectorAll('.led-mode-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    LED.mode=b.dataset.mode;
+    if(LED.mode==='auto') LED.on=false;
+    updateLedUI(null); sendLedCmd();
+  });
+});
+
 /* ── Fan Control ── */
 const FAN = { on: false, speed: 50, mode: 'auto' };
 

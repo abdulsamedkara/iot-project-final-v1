@@ -23,6 +23,7 @@
 #include "rfid.h"
 #include "smoke_sensor.h"
 #include "fan_control.h"
+#include "led_strip_ctrl.h"
 #include "dht11.h"
 #include "ui/display.h"
 
@@ -205,6 +206,9 @@ static void dht11_task(void *arg)
     }
 }
 
+// LED modu: 0=manual (web UI), 1=auto_ldr
+static volatile int s_led_auto = 1;
+
 // ─── LDR Görevi (Analog) ──────────────────────────────────────────────────────
 static void ldr_task(void *arg)
 {
@@ -215,12 +219,26 @@ static void ldr_task(void *arg)
     while (1) {
         int ldr_adc = ldr_sensor_read_avg();
         if (ldr_adc >= 0) {
-            ESP_LOGI(TAG_LDR, "LDR ADC = %d (Işık şiddeti)", ldr_adc);
+            ESP_LOGI(TAG_LDR, "LDR ADC = %d", ldr_adc);
+            if (s_led_auto) {
+                if (ldr_adc <= LDR_LED_DARK_ADC) {
+                    led_strip_set_brightness(255);
+                } else if (ldr_adc >= LDR_LED_BRIGHT_ADC) {
+                    led_strip_off();
+                } else {
+                    // Lineer interpolasyon (Fan kontrolündeki gibi oransal)
+                    // LDR_LED_DARK_ADC -> 255 (tam parlak)
+                    // LDR_LED_BRIGHT_ADC -> 0 (kapalı)
+                    int range = LDR_LED_BRIGHT_ADC - LDR_LED_DARK_ADC;
+                    int adc_diff = ldr_adc - LDR_LED_DARK_ADC;
+                    uint8_t brightness = (uint8_t)(255 - (adc_diff * 255 / range));
+                    led_strip_set_brightness(brightness);
+                }
+            }
         } else {
             ESP_LOGW(TAG_LDR, "LDR okuma hatası!");
         }
-        
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Saniyede bir kontrol et
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -389,10 +407,12 @@ static void sensor_broadcast_task(void *arg)
                 "\"temperature\":%d,\"humidity\":%d,"
                 "\"smoke\":%d,\"ldr\":%d,"
                 "\"pir\":%d,\"flame\":%d,\"vib\":%d,"
-                "\"fan_mode\":%d,\"fan_speed\":%d}",
+                "\"fan_mode\":%d,\"fan_speed\":%d,"
+                "\"led_mode\":%d}",
                 s_temp, s_hum, s_smoke, s_ldr,
                 pir, flame, vib,
-                s_fan_mode, s_fan_speed);
+                s_fan_mode, s_fan_speed,
+                s_led_auto);
 
             ws_client_send_text(json);
 
@@ -447,6 +467,31 @@ static void on_text(const char *json, size_t len)
     }
 
     // {"type":"fan","on":true/false,"speed":75,"mode":"manual"/"auto"}
+    if (strstr(json, "\"type\":\"led\"")) {
+        if (strstr(json, "\"mode\":\"auto\"")) {
+            s_led_auto = 1;
+            ESP_LOGI(TAG_T, "LED mod: otomatik (LDR)");
+        } else {
+            s_led_auto = 0;  // web UI'dan komut gelince manual moda geç
+            if (strstr(json, "\"on\":false")) {
+                led_strip_off();
+                ESP_LOGI(TAG_T, "LED kapat (manuel)");
+            } else {
+                const char *bp = strstr(json, "\"brightness\":");
+                if (bp) {
+                    int pct = atoi(bp + 13);
+                    if (pct < 0)   pct = 0;
+                    if (pct > 100) pct = 100;
+                    led_strip_set_brightness((uint8_t)(pct * 255 / 100));
+                    ESP_LOGI(TAG_T, "LED parlaklık %d%% (manuel)", pct);
+                } else {
+                    led_strip_on();
+                    ESP_LOGI(TAG_T, "LED ac (manuel)");
+                }
+            }
+        }
+    }
+
     if (strstr(json, "\"type\":\"fan\"")) {
         // mode
         if (strstr(json, "\"mode\":\"auto\""))   s_fan_mode = 1;
@@ -518,6 +563,7 @@ void app_main(void)
     ESP_ERROR_CHECK(smoke_sensor_init());
     ESP_ERROR_CHECK(ldr_sensor_init());
     ESP_ERROR_CHECK(fan_control_init());
+    ESP_ERROR_CHECK(led_strip_init());
     xTaskCreatePinnedToCore(smoke_task, "smoke", 3072, NULL, 3, NULL, 0);
 
     // 7c. DHT11 Sıcaklık ve Nem

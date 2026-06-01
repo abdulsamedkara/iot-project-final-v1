@@ -96,3 +96,15 @@
 
 // ─── Titreşim Sensörü ─────────────────────────────────────────────────────────
 #define VIB_GPIO            1               // SW-420 Titreşim Sensörü DO pini
+
+// ─── LDR → LED Otomatik Kontrol Eşikleri ─────────────────────────────────────
+#define LDR_LED_DARK_ADC     2400    // Bu değerin altı → tam karanlık → LED tam güç (%100)
+#define LDR_LED_BRIGHT_ADC   3300    // Bu değerin üstü → aydınlık → LED kapalı (%0)
+
+// ─── Şerit LED (L298N Channel A) ─────────────────────────────────────────────
+// IN1 → 3.3V (sabit), IN2 → GND (sabit), ENB → GPIO38
+#define LED_ENB_GPIO        38
+#define LED_LEDC_TIMER      LEDC_TIMER_2
+#define LED_LEDC_CHANNEL    LEDC_CHANNEL_2
+#define LED_PWM_FREQ_HZ     1000            // 1 kHz — LED için yeterli
+#define LED_DUTY_RES        LEDC_TIMER_8_BIT

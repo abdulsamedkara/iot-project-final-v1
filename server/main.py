@@ -454,6 +454,35 @@ async def fan_control(req: Request):
     return {"ok": sent, "session_id": session_id}
 
 
+@app.post("/api/led")
+async def led_control(req: Request):
+    """
+    Web UI'dan LED şerit kontrolü.
+    Body: {"on": true/false, "brightness": 0-100, "session_id": "..."}
+    """
+    body = await req.json()
+    session_id = body.get("session_id", "")
+
+    if not session_id:
+        with store._lock:
+            for sid, s in store._sessions.items():
+                if s.rfid_uid:
+                    session_id = sid
+                    break
+
+    if not session_id:
+        return JSONResponse({"error": "Aktif session yok"}, status_code=404)
+
+    cmd = {
+        "type":       "led",
+        "on":         body.get("on", False),
+        "brightness": body.get("brightness", 100),
+    }
+    sent = await _send_to_esp32(session_id, cmd)
+    log.info(f"LED komutu → [{session_id[:8]}] {cmd} sent={sent}")
+    return {"ok": sent, "session_id": session_id}
+
+
 # ─── Session logout ──────────────────────────────────────────────────────────
 @app.post("/api/session/{session_id}/logout")
 async def session_logout(session_id: str):
